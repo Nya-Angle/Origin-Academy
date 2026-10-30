@@ -1,0 +1,23 @@
+{
+  "name": "cdut-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CDUT Studio monorepo",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @profer/electron",
+    "build": "npm run build -w @profer/electron",
+    "start": "npm run start -w @profer/electron",
+    "typecheck": "npm run typecheck -w @profer/electron",
+    "pack": "npm run pack -w @profer/electron",
+    "dist:win": "npm run dist:win -w @profer/electron",
+    "dist:mac": "npm run dist:mac -w @profer/electron"
+  },
+  "allowScripts": {
+    "esbuild@0.24.2": true,
+    "esbuild@0.25.12": true
+  }
+}

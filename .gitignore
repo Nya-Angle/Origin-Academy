@@ -1,0 +1,25 @@
+# dependencies
+node_modules/
+
+# build outputs
+dist/
+out/
+build/
+release/
+
+# logs
+*.log
+debug.log
+
+# editor / tooling caches
+.screenshots/
+.trae-html-share-packages/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db

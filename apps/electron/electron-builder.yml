@@ -1,0 +1,46 @@
+# electron-builder 配置
+# 文档: https://www.electron.build/configuration/configuration
+
+appId: com.cdutai.studio
+productName: CDUT Studio
+copyright: By 雫窝中央实验室 · 2026
+
+# Electron 版本（workspace 下无法自动检测，需显式指定）
+electronVersion: 43.8.4
+
+# 复用已安装的本地 Electron 运行时，避免打包时重复从 GitHub 下载
+electronDist: ../../node_modules/electron/dist
+
+directories:
+  output: out
+
+compression: normal
+
+asar: true
+
+# 代码已被 esbuild / Vite 打包进 dist，不执行 npm install
+npmRebuild: false
+
+files:
+  - dist/**/*
+  - package.json
+
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - target: dmg
+      arch:
+        - arm64
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+
+nsis:
+  artifactName: CDUT-Studio-Setup-${version}.${ext}
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
