@@ -8,8 +8,8 @@ copyright: By 雫窝中央实验室 · 2026
 # Electron 版本（workspace 下无法自动检测，需显式指定）
 electronVersion: 43.8.4
 
-# 复用已安装的本地 Electron 运行时，避免打包时重复从 GitHub 下载
-electronDist: ../../node_modules/electron/dist
+# 不在此处固定 electronDist：该路径只对当前平台有效。Windows 构建由脚本显式传入
+# 本地运行时，macOS 构建则由 electron-builder 自动拉取对应平台的 Electron。
 
 directories:
   output: out
@@ -27,6 +27,7 @@ files:
 
 mac:
   category: public.app-category.developer-tools
+  artifactName: CDUT-Studio-${version}-arm64.${ext}
   target:
     - target: dmg
       arch:
@@ -34,9 +35,18 @@ mac:
 
 win:
   target:
+    - target: portable
+      arch:
+        - x64
     - target: nsis
       arch:
         - x64
+
+# 免安装单文件版：NSIS 自解压壳，运行时解压到临时目录，无需安装
+portable:
+  artifactName: CDUT-Studio-Portable-${version}.${ext}
+  # 按版本隔离解压目录，避免不同版本复用同一临时目录造成残留文件
+  unpackDirName: CDUT-Studio-${version}
 
 nsis:
   artifactName: CDUT-Studio-Setup-${version}.${ext}
