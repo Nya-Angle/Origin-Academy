@@ -15,8 +15,9 @@
  * 不主动嗅探或解密内网 Cookie。
  */
 
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { BrowserWindow, Menu, View, WebContentsView, clipboard, ipcMain, session as electronSession, shell, type Session, type WebContents } from 'electron'
+import { BrowserWindow, Menu, View, WebContentsView, clipboard, ipcMain, session as electronSession, shell, type DownloadItem, type Session, type WebContents } from 'electron'
 import {
   buildYanhuBlockedUrl,
   isYanhuBlockedUrl,
@@ -329,11 +330,29 @@ export class YanhuExpressManager {
   /** 待下载视频文件名为 URL -> 定制文件名映射 */
   private readonly pendingDownloads = new Map<string, string>()
 
+  /** 视频下载任务登记：clientId -> 任务（供取消 / 保存路径查询） */
+  private readonly videoDownloadJobs = new Map<
+    string,
+    { item: DownloadItem; tabId: string | null; filename: string }
+  >()
+
+  /** URL -> clientId（原生下载发起前登记，will-download 时反查） */
+  private readonly pendingDownloadClients = new Map<string, string>()
+
+  /** blob 下载（HLS 合并结果）预登记：filename.toLowerCase() -> { clientId, at } */
+  private readonly pendingBlobClients = new Map<string, { clientId: string; at: number }>()
+
+  /** 已完成的保存路径（供「立即播放 / 在文件夹中显示」）：clientId -> { path, at } */
+  private readonly recentDownloadPaths = new Map<string, { path: string; at: number }>()
+
   constructor() {
-    ipcMain.on('yanhu-download-video', (event, payload?: { url?: string; filename?: string }) => {
+    ipcMain.on('yanhu-download-video', (event, payload?: { url?: string; filename?: string; clientId?: string }) => {
       if (!payload?.url) return
       const wc = event.sender
-      this.triggerVideoDownload(wc, payload.url, payload.filename)
+      this.triggerVideoDownload(wc, payload.url, payload.filename, payload.clientId)
+    })
+    ipcMain.on('yanhu-download-action', (_event, payload?: { action?: string; clientId?: string; filename?: string }) => {
+      this.handleDownloadAction(payload)
     })
   }
 
@@ -430,9 +449,9 @@ export class YanhuExpressManager {
     }
 
     // 全部守卫安装流程结束后再置位：若中途抛错，标记不落地，后续调用可重试安装，避免守卫永久缺失
-    // 问渠学堂课堂教学视频下载守卫：自动识别并注入定制文件名
+    // 问渠学堂课堂教学视频下载守卫：自动识别并注入定制文件名，并向发起标签回传实时进度
     try {
-      ses.on('will-download', (_event, item) => {
+      ses.on('will-download', (_event, item, webContents) => {
         const url = item.getURL()
         const chain = item.getURLChain()
         let filename = this.pendingDownloads.get(url)
@@ -456,10 +475,20 @@ export class YanhuExpressManager {
             defaultPath: filename,
           })
         }
+        // 仅回传页面主动发起（携带 clientId）的视频下载，站点其它下载保持静默
+        const clientId = this.resolveDownloadClientId(item, chain)
+        if (clientId && webContents && !webContents.isDestroyed()) {
+          this.attachDownloadReporter(item, clientId, filename || item.getFilename() || '视频文件', webContents)
+        }
         item.once('done', () => {
           this.pendingDownloads.delete(url)
           const clean = url.split('?')[0]
           if (clean) this.pendingDownloads.delete(clean)
+          if (clientId) {
+            this.pendingDownloadClients.delete(url)
+            if (chain) for (const u of chain) this.pendingDownloadClients.delete(u)
+            if (clean) this.pendingDownloadClients.delete(clean)
+          }
         })
       })
     } catch (err) {
@@ -1095,14 +1124,17 @@ export class YanhuExpressManager {
   private readonly recentTriggeredDownloads = new Map<string, number>()
 
   /** 触发 WebContents 级别的原生视频下载（不触发整页导航，保留合法 Referer） */
-  public triggerVideoDownload(wc: WebContents, url: string, filename?: string): void {
+  public triggerVideoDownload(wc: WebContents, url: string, filename?: string, clientId?: string): void {
     if (!wc || wc.isDestroyed()) return
     const targetUrl = url.trim()
     const cleanUrl = targetUrl.split('?')[0] || targetUrl
     const now = Date.now()
-    const lastAt = this.recentTriggeredDownloads.get(cleanUrl) || 0
+    // 页面主动发起的下载带 clientId：以其为去重键，允许卡片「重试」在 8 秒内重新发起；
+    // 站点自发导航/窗口打开仍按 cleanUrl 去重，避免重复触发
+    const dedupeKey = clientId ? `${cleanUrl}|${clientId}` : cleanUrl
+    const lastAt = this.recentTriggeredDownloads.get(dedupeKey) || 0
     if (now - lastAt < 8000) return
-    this.recentTriggeredDownloads.set(cleanUrl, now)
+    this.recentTriggeredDownloads.set(dedupeKey, now)
     let resolvedFilename = filename?.trim()
     if (!resolvedFilename) {
       try {
@@ -1116,7 +1148,169 @@ export class YanhuExpressManager {
       const clean = targetUrl.split('?')[0]
       if (clean) this.pendingDownloads.set(clean, resolvedFilename)
     }
+    if (clientId) {
+      this.pendingDownloadClients.set(targetUrl, clientId)
+      this.pendingDownloadClients.set(cleanUrl, clientId)
+    }
     wc.downloadURL(targetUrl)
+  }
+
+  /**
+   * 反查下载任务标识。
+   *
+   * - 普通视频直链：URL / URL 链 / 去查询串地址 命中 `pendingDownloadClients`；
+   * - HLS 合并结果（blob:）：按下载文件名匹配 15 秒内的 `pendingBlobClients` 预登记。
+   * 未命中返回 undefined，保持站点其它下载的原有静默行为。
+   */
+  private resolveDownloadClientId(item: DownloadItem, chain: string[] | undefined): string | undefined {
+    try {
+      const url = item.getURL()
+      if (url.startsWith('blob:')) {
+        const key = (item.getFilename() || '').toLowerCase()
+        const record = key ? this.pendingBlobClients.get(key) : undefined
+        if (!record) return undefined
+        this.pendingBlobClients.delete(key)
+        if (Date.now() - record.at > 15000) return undefined
+        return record.clientId
+      }
+      const candidates: string[] = [url]
+      if (chain) for (const u of chain) candidates.push(u)
+      for (const raw of candidates) {
+        if (!raw) continue
+        const direct = this.pendingDownloadClients.get(raw)
+        if (direct) return direct
+        const clean = raw.split('?')[0]
+        if (clean) {
+          const viaClean = this.pendingDownloadClients.get(clean)
+          if (viaClean) return viaClean
+        }
+      }
+      return undefined
+    } catch {
+      return undefined
+    }
+  }
+
+  /** 向发起标签回传下载事件（不依赖渲染进程主动轮询） */
+  private sendDownloadEvent(wc: WebContents, payload: Record<string, unknown>): void {
+    try {
+      if (!wc.isDestroyed()) wc.send('yanhu-download-progress', payload)
+    } catch (err) {
+      console.warn('[AI 问渠学堂] 下载进度回传失败:', err)
+    }
+  }
+
+  /**
+   * 挂接原生下载进度上报。
+   *
+   * `updated` 节流至 350ms 或百分比整数位变化 ≥1%，避免高频 IPC 触发页面级
+   * MutationObserver 重扫描；`done` 时登记保存路径供「立即播放 / 在文件夹中显示」。
+   */
+  private attachDownloadReporter(
+    item: DownloadItem,
+    clientId: string,
+    filename: string,
+    wc: WebContents,
+  ): void {
+    const tabId = this.findTabByWebContentsId(wc.id)?.id ?? null
+    this.videoDownloadJobs.set(clientId, { item, tabId, filename })
+
+    const base = { clientId, filename }
+    this.sendDownloadEvent(wc, {
+      ...base,
+      phase: 'start',
+      received: 0,
+      total: item.getTotalBytes() || undefined,
+    })
+
+    let lastAt = 0
+    let lastPct = -1
+    item.on('updated', (_event, state) => {
+      if (state !== 'progressing') return
+      const now = Date.now()
+      const received = item.getReceivedBytes()
+      const total = item.getTotalBytes()
+      const pct = total > 0 ? Math.floor((received / total) * 100) : -1
+      if (now - lastAt < 350 && pct === lastPct) return
+      lastAt = now
+      lastPct = pct
+      this.sendDownloadEvent(wc, {
+        ...base,
+        phase: 'progress',
+        received,
+        total: total > 0 ? total : undefined,
+      })
+    })
+
+    item.once('done', (_event, state) => {
+      const savePath = item.getSavePath()
+      if (state === 'completed') {
+        if (savePath) {
+          this.recentDownloadPaths.set(clientId, { path: savePath, at: Date.now() })
+        }
+        this.sendDownloadEvent(wc, {
+          ...base,
+          phase: 'done',
+          received: item.getReceivedBytes(),
+          total: item.getTotalBytes() || undefined,
+          savePath: savePath || undefined,
+        })
+      } else if (state === 'cancelled') {
+        this.sendDownloadEvent(wc, { ...base, phase: 'cancelled' })
+      } else {
+        this.sendDownloadEvent(wc, { ...base, phase: 'error', message: '下载被中断，请重试' })
+      }
+      this.videoDownloadJobs.delete(clientId)
+    })
+  }
+
+  /**
+   * 下载卡片动作。
+   *
+   * 安全边界：`open` / `reveal` 仅使用主进程自身登记过的保存路径，绝不接受页面传入的任意路径。
+   */
+  private handleDownloadAction(payload?: { action?: string; clientId?: string; filename?: string }): void {
+    try {
+      if (!payload || typeof payload.clientId !== 'string' || !payload.clientId) return
+      const clientId = payload.clientId
+      const action = payload.action
+      if (action === 'cancel') {
+        const job = this.videoDownloadJobs.get(clientId)
+        if (job) {
+          try {
+            job.item.cancel()
+          } catch {}
+        }
+        return
+      }
+      if (action === 'blob') {
+        const filename = typeof payload.filename === 'string' ? payload.filename.trim() : ''
+        if (!filename) return
+        const now = Date.now()
+        for (const [key, record] of this.pendingBlobClients) {
+          if (now - record.at > 15000) this.pendingBlobClients.delete(key)
+        }
+        this.pendingBlobClients.set(filename.toLowerCase(), { clientId, at: now })
+        return
+      }
+      if (action === 'open' || action === 'reveal') {
+        const record = this.recentDownloadPaths.get(clientId)
+        if (!record) return
+        if (Date.now() - record.at > 10 * 60 * 1000) {
+          this.recentDownloadPaths.delete(clientId)
+          return
+        }
+        if (!existsSync(record.path)) return
+        if (action === 'open') {
+          void shell.openPath(record.path)
+        } else {
+          shell.showItemInFolder(record.path)
+        }
+        return
+      }
+    } catch (err) {
+      console.warn('[AI 问渠学堂] 下载动作处理失败:', err)
+    }
   }
 
   private applyWqxtCleanerIfNeeded(tab: YanhuTabRecord): void {

@@ -51,17 +51,33 @@ function applyWqxtDownloadBridge(): void {
     window.addEventListener('message', (event) => {
       // 仅接收来自当前主窗口自身的合法下载指令，过滤跨帧或非本窗干扰
       if (event.source !== window) return
-      if (
-        event &&
-        event.data &&
-        typeof event.data === 'object' &&
-        event.data.type === '__profer_wqxt_download'
-      ) {
+      if (!event || !event.data || typeof event.data !== 'object') return
+      if (event.data.type === '__profer_wqxt_download') {
         const url = typeof event.data.url === 'string' ? event.data.url : ''
         const filename = typeof event.data.filename === 'string' ? event.data.filename : undefined
+        const clientId = typeof event.data.clientId === 'string' ? event.data.clientId : undefined
         if (url) {
-          ipcRenderer.send('yanhu-download-video', { url, filename })
+          ipcRenderer.send('yanhu-download-video', { url, filename, clientId })
         }
+        return
+      }
+      if (event.data.type === '__profer_wqxt_download_action') {
+        const action = typeof event.data.action === 'string' ? event.data.action : ''
+        const clientId = typeof event.data.clientId === 'string' ? event.data.clientId : ''
+        const filename = typeof event.data.filename === 'string' ? event.data.filename : undefined
+        if (!clientId) return
+        if (action !== 'cancel' && action !== 'open' && action !== 'reveal' && action !== 'blob') return
+        ipcRenderer.send('yanhu-download-action', { action, clientId, filename })
+      }
+    })
+
+    // 主进程 -> 页面：接管反向桥（预加载位于隔离世界，需再投递到主世界供注入脚本消费）
+    ipcRenderer.on('yanhu-download-progress', (_event, payload) => {
+      try {
+        if (!payload || typeof payload !== 'object') return
+        window.postMessage({ type: '__profer_wqxt_download_progress', payload }, '*')
+      } catch (err) {
+        console.warn('[AI 问渠学堂·Preload] 下载进度回投失败:', err)
       }
     })
   } catch (err) {

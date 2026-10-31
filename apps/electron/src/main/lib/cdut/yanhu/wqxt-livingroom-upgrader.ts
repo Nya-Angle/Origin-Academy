@@ -1557,6 +1557,267 @@ div.header-info.profer-wqxt-header-upgraded > :not(#__profer-wqxt-edu-header) {
   cursor: not-allowed !important;
 }
 
+/* 3.10 左下角视频下载通知卡片：非模态、可堆叠、完成峰值反馈 */
+#__profer-svd-stack {
+  position: fixed;
+  left: 24px;
+  bottom: 24px;
+  z-index: 100005;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 12px;
+  pointer-events: none;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+#__profer-svd-stack .svd-card {
+  --svd-accent: #1677ff;
+  position: relative;
+  width: 348px;
+  box-sizing: border-box;
+  padding: 14px 16px 14px 18px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 10px 32px rgba(15, 35, 70, 0.16), 0 2px 6px rgba(15, 35, 70, 0.08);
+  color: #1f2329;
+  pointer-events: auto;
+  overflow: hidden;
+  animation: __profer-svd-in 0.38s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  transition: box-shadow 0.3s ease;
+}
+#__profer-svd-stack .svd-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--svd-accent);
+  transition: background 0.4s ease;
+}
+#__profer-svd-stack .svd-card.svd-leaving {
+  animation: __profer-svd-out 0.28s ease-in both;
+}
+#__profer-svd-stack .svd-card.svd-success {
+  --svd-accent: #16a34a;
+  animation: __profer-svd-pop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+  box-shadow: 0 12px 36px rgba(22, 163, 74, 0.22), 0 2px 6px rgba(15, 35, 70, 0.08);
+}
+#__profer-svd-stack .svd-card.svd-error {
+  --svd-accent: #e5484d;
+}
+#__profer-svd-stack .svd-card.svd-info {
+  --svd-accent: #f59e0b;
+}
+#__profer-svd-stack .svd-card.svd-muted {
+  --svd-accent: #9aa4b2;
+}
+#__profer-svd-stack .svd-card.svd-nudge {
+  animation: __profer-svd-nudge 0.45s ease both;
+}
+#__profer-svd-stack .svd-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+#__profer-svd-stack .svd-icon {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--svd-accent) 12%, #ffffff);
+  color: var(--svd-accent);
+  transition: background 0.4s ease, color 0.4s ease;
+}
+#__profer-svd-stack .svd-icon svg {
+  width: 18px;
+  height: 18px;
+}
+#__profer-svd-stack .svd-running .svd-icon svg {
+  animation: __profer-svd-bob 1.6s ease-in-out infinite;
+}
+#__profer-svd-stack .svd-check path {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: __profer-svd-draw 0.45s 0.15s ease-out forwards;
+}
+#__profer-svd-stack .svd-titles {
+  flex: 1;
+  min-width: 0;
+}
+#__profer-svd-stack .svd-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+#__profer-svd-stack .svd-file {
+  font-size: 12px;
+  color: #646a73;
+  line-height: 18px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#__profer-svd-stack .svd-close {
+  flex: none;
+  border: none;
+  background: transparent;
+  color: #8f959e;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 6px;
+  margin: -4px -6px 0 0;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+#__profer-svd-stack .svd-close:hover {
+  background: #f2f3f5;
+  color: #1f2329;
+}
+#__profer-svd-stack .svd-close.svd-confirm {
+  color: #e5484d;
+  background: #fff1f0;
+  font-weight: 500;
+}
+#__profer-svd-stack .svd-body {
+  margin: 12px 0 0 46px;
+}
+#__profer-svd-stack .svd-bar {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: #eef0f3;
+  overflow: hidden;
+}
+#__profer-svd-stack .svd-bar-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 3px;
+  background-color: var(--svd-accent);
+  background-image: linear-gradient(-45deg, rgba(255, 255, 255, 0.28) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.28) 50%, rgba(255, 255, 255, 0.28) 75%, transparent 75%);
+  background-size: 16px 16px;
+  animation: __profer-svd-stripes 0.9s linear infinite;
+  transition: width 0.35s ease, background-color 0.4s ease;
+}
+#__profer-svd-stack .svd-bar.svd-indeterminate .svd-bar-fill {
+  width: 35%;
+  animation: __profer-svd-stripes 0.9s linear infinite, __profer-svd-slide 1.4s ease-in-out infinite;
+}
+#__profer-svd-stack .svd-success .svd-bar-fill,
+#__profer-svd-stack .svd-error .svd-bar-fill,
+#__profer-svd-stack .svd-info .svd-bar-fill,
+#__profer-svd-stack .svd-muted .svd-bar-fill {
+  animation: none;
+  background-image: none;
+}
+#__profer-svd-stack .svd-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 7px;
+  font-size: 12px;
+  color: #646a73;
+  font-variant-numeric: tabular-nums;
+}
+#__profer-svd-stack .svd-meta b {
+  color: #1f2329;
+  font-weight: 600;
+  margin-right: 4px;
+}
+#__profer-svd-stack .svd-hint {
+  margin-top: 9px;
+  font-size: 12px;
+  line-height: 18px;
+  color: #8f959e;
+}
+#__profer-svd-stack .svd-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+#__profer-svd-stack .svd-actions:empty {
+  display: none;
+}
+#__profer-svd-stack .svd-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid #dee0e3;
+  background: #ffffff;
+  color: #1f2329;
+}
+#__profer-svd-stack .svd-btn:hover {
+  background: #f5f6f7;
+}
+#__profer-svd-stack .svd-btn-primary {
+  border-color: var(--svd-accent);
+  background: var(--svd-accent);
+  color: #ffffff;
+  font-weight: 500;
+}
+#__profer-svd-stack .svd-btn-primary:hover {
+  filter: brightness(1.06);
+  background: var(--svd-accent);
+}
+#__profer-svd-stack .svd-timer {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  background: var(--svd-accent);
+  opacity: 0.35;
+  transform-origin: left;
+}
+@keyframes __profer-svd-in {
+  from { opacity: 0; transform: translate(-24px, 12px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes __profer-svd-out {
+  to { opacity: 0; transform: translateX(-32px); }
+}
+@keyframes __profer-svd-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+@keyframes __profer-svd-nudge {
+  0%, 100% { transform: none; }
+  25% { transform: translateX(6px); }
+  50% { transform: translateX(-4px); }
+  75% { transform: translateX(2px); }
+}
+@keyframes __profer-svd-bob {
+  0%, 100% { transform: translateY(-1px); }
+  50% { transform: translateY(2px); }
+}
+@keyframes __profer-svd-draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes __profer-svd-stripes {
+  from { background-position: 0 0; }
+  to { background-position: -16px 0; }
+}
+@keyframes __profer-svd-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(290%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #__profer-svd-stack .svd-card,
+  #__profer-svd-stack .svd-card * {
+    animation: none !important;
+    transition: none !important;
+  }
+  #__profer-svd-stack .svd-check path {
+    stroke-dashoffset: 0;
+  }
+}
+
 /* 3.9 页面底部通栏：CDUT Studio 官方底栏 */
 #__profer-wqxt-footer {
   width: 100% !important;
@@ -3755,6 +4016,558 @@ export function buildWqxtUpgradeRuntimeScript(): string {
       return title.trim();
     }
 
+    // ---------- 左下角视频下载通知卡片（非模态 · 过程透明 · 峰终反馈） ----------
+    var SVD_CONFIG = { completionSound: true, successAutoDismissMs: 20000 };
+    var SVD_STACK_ID = '__profer-svd-stack';
+
+    var SVD_ICONS = {
+      running: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"></path><path d="M7.5 10.5 12 15l4.5-4.5"></path><path d="M5 19h14"></path></svg>',
+      success: '<svg class="svd-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.8l4.3 4.2L19 6.6"></path></svg>',
+      error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5.5"></path><path d="M12 16.8v.1"></path></svg>',
+      info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 10.5v6"></path><path d="M12 7.2v.1"></path></svg>',
+      muted: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 8l8 8"></path><path d="M16 8l-8 8"></path></svg>'
+    };
+
+    /** 人类可读字节数（用于已下载量 / 总量 / 瞬时网速） */
+    function svdFormatBytes(n) {
+      var v = Number(n);
+      if (!v || v < 0 || !isFinite(v)) return '0 B';
+      var units = ['B', 'KB', 'MB', 'GB', 'TB'];
+      var i = 0;
+      while (v >= 1024 && i < units.length - 1) { v = v / 1024; i++; }
+      var text = (i === 0 || v >= 100) ? String(Math.round(v)) : v.toFixed(1);
+      return text + ' ' + units[i];
+    }
+
+    /** 人类可读时长；rough=true 时按 5 秒粒度模糊化，避免“虚假精确” */
+    function svdFormatDuration(sec, rough) {
+      var s = Math.max(0, Math.round(Number(sec) || 0));
+      if (rough && s > 5) s = Math.round(s / 5) * 5;
+      if (s < 60) return s + ' 秒';
+      var m = Math.floor(s / 60);
+      if (m < 60) {
+        var rest = s % 60;
+        return rest ? (m + ' 分 ' + rest + ' 秒') : (m + ' 分钟');
+      }
+      var h = Math.floor(m / 60);
+      var mm = m % 60;
+      return mm ? (h + ' 小时 ' + mm + ' 分') : (h + ' 小时');
+    }
+
+    /** 峰值完成提醒：仅视觉（卡片状态切换）+ 提示音；不做标签闪烁与系统通知 */
+    var CompletionAlert = {
+      audioCtx: null,
+      prime: function () {
+        try {
+          var Ctx = window.AudioContext || window.webkitAudioContext;
+          if (!Ctx) return;
+          if (!this.audioCtx) this.audioCtx = new Ctx();
+          if (this.audioCtx.state === 'suspended' && typeof this.audioCtx.resume === 'function') {
+            this.audioCtx.resume();
+          }
+        } catch (e) {}
+      },
+      playChime: function () {
+        try {
+          if (!SVD_CONFIG.completionSound) return;
+          this.prime();
+          var ctx = this.audioCtx;
+          if (!ctx || ctx.state !== 'running') return;
+          var now = ctx.currentTime;
+          var notes = [[880, 0], [1318.5, 0.13]];
+          for (var i = 0; i < notes.length; i++) {
+            var freq = notes[i][0];
+            var offset = notes[i][1];
+            var osc = ctx.createOscillator();
+            var gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.0001, now + offset);
+            gain.gain.exponentialRampToValueAtTime(0.07, now + offset + 0.015);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.45);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now + offset);
+            osc.stop(now + offset + 0.5);
+          }
+        } catch (e) {}
+      },
+      fire: function () {
+        this.playChime();
+      }
+    };
+
+    var DownloadNotifier = {
+      ensureContainer: function () {
+        var stack = byId(SVD_STACK_ID);
+        if (stack) return stack;
+        stack = document.createElement('div');
+        stack.id = SVD_STACK_ID;
+        (document.body || document.documentElement).appendChild(stack);
+        return stack;
+      },
+      create: function (opts) {
+        opts = opts || {};
+        var stack = this.ensureContainer();
+        var el = document.createElement('div');
+        el.className = 'svd-card svd-running';
+        el.innerHTML = '<div class="svd-head">'
+          + '<div class="svd-icon">' + SVD_ICONS.running + '</div>'
+          + '<div class="svd-titles"><div class="svd-title">正在准备下载</div>'
+          + '<div class="svd-file"></div></div>'
+          + '<button type="button" class="svd-close">取消</button>'
+          + '</div>'
+          + '<div class="svd-body">'
+          + '<div class="svd-bar svd-indeterminate"><div class="svd-bar-fill"></div></div>'
+          + '<div class="svd-meta"><span class="svd-meta-l">正在连接…</span><span class="svd-meta-r"></span></div>'
+          + '<div class="svd-hint">🔒 视频会在全部下载完成后才保存为文件，完成时会第一时间提醒你，在此之前可以继续看课。</div>'
+          + '<div class="svd-actions"></div>'
+          + '</div>'
+          + '<div class="svd-timer" style="display:none"></div>';
+        stack.appendChild(el);
+
+        var titleEl = el.querySelector('.svd-title');
+        var fileEl = el.querySelector('.svd-file');
+        var barEl = el.querySelector('.svd-bar');
+        var fillEl = el.querySelector('.svd-bar-fill');
+        var metaL = el.querySelector('.svd-meta-l');
+        var metaR = el.querySelector('.svd-meta-r');
+        var hintEl = el.querySelector('.svd-hint');
+        var actionsEl = el.querySelector('.svd-actions');
+        var closeBtn = el.querySelector('.svd-close');
+        var iconEl = el.querySelector('.svd-icon');
+        var timerEl = el.querySelector('.svd-timer');
+        if (opts.filename) fileEl.textContent = opts.filename;
+
+        var state = 'running';
+        var removed = false;
+        var view = { fraction: null, loaded: null, total: 0, detail: '' };
+        var shownFraction = 0;
+        var startTs = Date.now();
+        var lastTextAt = 0;
+        var textTimer = null;
+        var lastSampleAt = Date.now();
+        var lastLoaded = null;
+        var lastSampledFrac = 0;
+        var speedEma = 0;
+        var fracRateEma = 0;
+        var confirmTimer = null;
+        var tickTimer = null;
+        var hovering = false;
+
+        function setCardState(next) {
+          el.classList.remove('svd-running', 'svd-success', 'svd-error', 'svd-info', 'svd-muted');
+          el.classList.add('svd-' + next);
+        }
+
+        function setActions(items) {
+          actionsEl.innerHTML = '';
+          for (var i = 0; i < items.length; i++) {
+            var cfg = items[i];
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'svd-btn' + (cfg.primary ? ' svd-btn-primary' : '');
+            btn.textContent = cfg.label;
+            (function (handler) {
+              btn.addEventListener('click', function () {
+                try { if (typeof handler === 'function') handler(); } catch (e) {}
+              });
+            })(cfg.onClick);
+            actionsEl.appendChild(btn);
+          }
+        }
+
+        function paintMeta() {
+          if (state !== 'running') return;
+          var pctText;
+          if (view.fraction !== null) {
+            pctText = Math.floor(view.fraction * 100) + '%';
+          } else {
+            pctText = '准备中…';
+          }
+          var sizeText = '';
+          if (view.total && view.loaded !== null) {
+            sizeText = svdFormatBytes(view.loaded) + ' / ' + svdFormatBytes(view.total);
+          } else if (view.loaded !== null && view.loaded > 0) {
+            sizeText = '已载入 ' + svdFormatBytes(view.loaded);
+          } else if (view.detail) {
+            sizeText = view.detail;
+          }
+          metaL.textContent = sizeText ? (pctText + ' · ' + sizeText) : pctText;
+
+          var right = '';
+          if (speedEma > 0) right = svdFormatBytes(speedEma) + '/s';
+          var eta = null;
+          if (view.fraction !== null && view.fraction > 0 && view.fraction < 1 && fracRateEma > 0) {
+            eta = (1 - view.fraction) / fracRateEma;
+          }
+          if (eta !== null && eta > 0) {
+            right += (right ? ' · ' : '') + '剩约 ' + svdFormatDuration(eta, true);
+          } else if (Date.now() - startTs < 2000) {
+            right += (right ? ' · ' : '') + '正在估算剩余时间…';
+          }
+          metaR.textContent = right;
+        }
+
+        // 文本刷新节流 ≥500ms：页面级 MutationObserver 会对文本改写触发全量 sync
+        function schedulePaint() {
+          var now = Date.now();
+          var wait = 500 - (now - lastTextAt);
+          if (textTimer) return;
+          if (wait <= 0) {
+            lastTextAt = now;
+            paintMeta();
+            return;
+          }
+          textTimer = setTimeout(function () {
+            textTimer = null;
+            lastTextAt = Date.now();
+            paintMeta();
+          }, wait);
+        }
+
+        function clearTimers() {
+          if (confirmTimer) { clearTimeout(confirmTimer); confirmTimer = null; }
+          if (textTimer) { clearTimeout(textTimer); textTimer = null; }
+          if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
+        }
+
+        function dismiss(skipCallback) {
+          if (removed) return;
+          removed = true;
+          clearTimers();
+          el.classList.add('svd-leaving');
+          setTimeout(function () {
+            if (el.parentNode) el.parentNode.removeChild(el);
+            var stackNode = byId(SVD_STACK_ID);
+            if (stackNode && !stackNode.children.length && stackNode.parentNode) {
+              stackNode.parentNode.removeChild(stackNode);
+            }
+            if (!skipCallback && typeof opts.onDismiss === 'function') {
+              try { opts.onDismiss(); } catch (e) {}
+            }
+          }, 300);
+        }
+
+        function autoDismiss(ms) {
+          if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
+          var remain = Math.max(1000, Number(ms) || 0);
+          var totalMs = remain;
+          timerEl.style.display = 'block';
+          timerEl.style.transform = 'scaleX(1)';
+          tickTimer = setInterval(function () {
+            if (removed) { clearInterval(tickTimer); tickTimer = null; return; }
+            if (document.hidden || hovering) return;
+            remain -= 100;
+            if (remain <= 0) {
+              clearInterval(tickTimer);
+              tickTimer = null;
+              timerEl.style.transform = 'scaleX(0)';
+              dismiss(false);
+              return;
+            }
+            timerEl.style.transform = 'scaleX(' + (remain / totalMs).toFixed(3) + ')';
+          }, 100);
+        }
+
+        el.addEventListener('mouseenter', function () { hovering = true; });
+        el.addEventListener('mouseleave', function () { hovering = false; });
+
+        closeBtn.addEventListener('click', function () {
+          if (state === 'running') {
+            if (closeBtn.classList.contains('svd-confirm')) {
+              if (confirmTimer) { clearTimeout(confirmTimer); confirmTimer = null; }
+              closeBtn.classList.remove('svd-confirm');
+              closeBtn.textContent = '取消';
+              if (typeof opts.onCancel === 'function') {
+                try { opts.onCancel(); } catch (e) {}
+              }
+              return;
+            }
+            closeBtn.classList.add('svd-confirm');
+            closeBtn.textContent = '确认取消？';
+            confirmTimer = setTimeout(function () {
+              confirmTimer = null;
+              closeBtn.classList.remove('svd-confirm');
+              closeBtn.textContent = '取消';
+            }, 3000);
+            return;
+          }
+          dismiss(false);
+        });
+
+        return {
+          el: el,
+          getState: function () { return state; },
+          setPhase: function (text) {
+            if (state !== 'running' || typeof text !== 'string' || !text) return;
+            var now = Date.now();
+            if (now - lastTextAt < 500) return;
+            lastTextAt = now;
+            titleEl.textContent = text;
+          },
+          setProgress: function (p) {
+            if (state !== 'running') return;
+            p = p || {};
+            var now = Date.now();
+            var frac = null;
+            if (typeof p.fraction === 'number' && isFinite(p.fraction)) {
+              frac = Math.max(0, Math.min(1, p.fraction));
+            }
+            var loaded = (typeof p.loaded === 'number' && isFinite(p.loaded)) ? Math.max(0, p.loaded) : null;
+            var total = (typeof p.total === 'number' && isFinite(p.total) && p.total > 0) ? p.total : 0;
+            if (loaded === null && total && frac !== null) loaded = Math.round(frac * total);
+            if (frac === null && total && loaded !== null) frac = Math.min(1, loaded / total);
+
+            if (typeof p.detail === 'string' && p.detail) view.detail = p.detail;
+            if (total) view.total = total;
+            if (loaded !== null) view.loaded = loaded;
+            if (frac !== null) {
+              shownFraction = Math.max(shownFraction, frac);
+              view.fraction = shownFraction;
+            }
+
+            if (view.fraction !== null) {
+              barEl.classList.remove('svd-indeterminate');
+              fillEl.style.width = (view.fraction * 100).toFixed(2) + '%';
+            } else if (!barEl.classList.contains('svd-indeterminate')) {
+              barEl.classList.add('svd-indeterminate');
+            }
+
+            // EMA 网速与进度速率：采样间隔 ≥500ms，抑制瞬时抖动
+            if (loaded !== null && total) {
+              if (lastLoaded === null) {
+                lastLoaded = loaded;
+                lastSampledFrac = view.fraction !== null ? view.fraction : 0;
+                lastSampleAt = now;
+              } else if (now - lastSampleAt >= 500) {
+                var dt = (now - lastSampleAt) / 1000;
+                if (dt > 0) {
+                  var inst = Math.max(0, (loaded - lastLoaded) / dt);
+                  speedEma = speedEma > 0 ? (speedEma * 0.7 + inst * 0.3) : inst;
+                  if (view.fraction !== null) {
+                    var df = view.fraction - lastSampledFrac;
+                    if (df > 0) {
+                      var fr = df / dt;
+                      fracRateEma = fracRateEma > 0 ? (fracRateEma * 0.7 + fr * 0.3) : fr;
+                    }
+                  }
+                }
+                lastLoaded = loaded;
+                lastSampledFrac = view.fraction !== null ? view.fraction : lastSampledFrac;
+                lastSampleAt = now;
+              }
+            }
+            schedulePaint();
+          },
+          success: function (o) {
+            o = o || {};
+            state = 'success';
+            setCardState('success');
+            closeBtn.textContent = '关闭';
+            iconEl.innerHTML = SVD_ICONS.success;
+            titleEl.textContent = '下载完成，现在可以打开了';
+            if (o.name) fileEl.textContent = o.name;
+            view.fraction = 1;
+            barEl.classList.remove('svd-indeterminate');
+            barEl.style.display = '';
+            fillEl.style.width = '100%';
+            var size = Number(o.size) || 0;
+            metaL.textContent = '100%' + (size > 0 ? ' · ' + svdFormatBytes(size) : '');
+            metaR.textContent = '用时 ' + svdFormatDuration((Date.now() - startTs) / 1000, false);
+            hintEl.textContent = '文件已完整写入磁盘，可直接打开播放。';
+            setActions([
+              { label: '▶ 立即播放', primary: true, onClick: o.onPreview },
+              { label: '知道了', onClick: function () { dismiss(false); } }
+            ]);
+            autoDismiss(SVD_CONFIG.successAutoDismissMs);
+          },
+          handedOff: function (message) {
+            if (state !== 'running') return;
+            state = 'info';
+            setCardState('info');
+            closeBtn.textContent = '关闭';
+            iconEl.innerHTML = SVD_ICONS.info;
+            titleEl.textContent = '已交给系统下载';
+            barEl.style.display = 'none';
+            metaL.textContent = '等待系统完成后即可播放';
+            metaR.textContent = '';
+            hintEl.textContent = message || '请在系统下载窗口确认保存位置；下载完成后文件即可播放。';
+            setActions([{ label: '知道了', onClick: function () { dismiss(false); } }]);
+            autoDismiss(8000);
+          },
+          error: function (message, onRetry) {
+            state = 'error';
+            setCardState('error');
+            closeBtn.textContent = '关闭';
+            iconEl.innerHTML = SVD_ICONS.error;
+            titleEl.textContent = '下载失败';
+            barEl.classList.remove('svd-indeterminate');
+            barEl.style.display = '';
+            fillEl.style.width = (view.fraction !== null ? (view.fraction * 100).toFixed(2) : '0') + '%';
+            metaL.textContent = (view.fraction !== null ? Math.floor(view.fraction * 100) + '%' : '已中断')
+              + (view.total ? ' · ' + svdFormatBytes(view.total) : '');
+            metaR.textContent = '';
+            hintEl.textContent = message || '网络中断或保存被取消，可点击重试。';
+            setActions([
+              {
+                label: '重试',
+                primary: true,
+                onClick: function () {
+                  dismiss(true);
+                  if (typeof onRetry === 'function') {
+                    try { onRetry(); } catch (e) {}
+                  }
+                }
+              },
+              { label: '关闭', onClick: function () { dismiss(false); } }
+            ]);
+          },
+          cancelled: function () {
+            state = 'muted';
+            setCardState('muted');
+            closeBtn.textContent = '关闭';
+            iconEl.innerHTML = SVD_ICONS.muted;
+            titleEl.textContent = '已取消下载';
+            barEl.classList.remove('svd-indeterminate');
+            barEl.style.display = '';
+            fillEl.style.width = '0';
+            metaL.textContent = '未写入任何文件';
+            metaR.textContent = '';
+            hintEl.textContent = '已安全中止，磁盘上没有残缺文件。';
+            setActions([]);
+            autoDismiss(2500);
+          },
+          nudge: function () {
+            el.classList.remove('svd-nudge');
+            if (el.offsetWidth) { /* 强制重排以重启动画 */ }
+            el.classList.add('svd-nudge');
+            setTimeout(function () { el.classList.remove('svd-nudge'); }, 500);
+          },
+          dismiss: dismiss,
+          autoDismiss: autoDismiss
+        };
+      }
+    };
+
+    // ---------- 下载任务登记与主进程进度分发 ----------
+    var svdJobs = {};
+    var svdActiveByUrl = {};
+
+    function sendDownloadAction(clientId, action, filename) {
+      try {
+        window.postMessage({
+          type: '__profer_wqxt_download_action',
+          action: action,
+          clientId: clientId,
+          filename: filename
+        }, '*');
+      } catch (e) {}
+    }
+
+    function svdUnmapUrl(clientId) {
+      var job = svdJobs[clientId];
+      if (!job) return;
+      if (job.url && svdActiveByUrl[job.url] === clientId) delete svdActiveByUrl[job.url];
+      job.url = '';
+    }
+
+    function svdUnregister(clientId) {
+      var job = svdJobs[clientId];
+      if (!job) return;
+      if (job.blobTimer) { clearTimeout(job.blobTimer); job.blobTimer = null; }
+      svdUnmapUrl(clientId);
+      delete svdJobs[clientId];
+    }
+
+    window.addEventListener('message', function (event) {
+      try {
+        if (event.source !== window) return;
+        var data = event.data;
+        if (!data || typeof data !== 'object') return;
+        if (data.type !== '__profer_wqxt_download_progress') return;
+        if (!isLivingRoom()) return;
+        var payload = data.payload;
+        if (!payload || typeof payload !== 'object') return;
+        var clientId = payload.clientId;
+        if (typeof clientId !== 'string' || !clientId) return;
+        var filename = typeof payload.filename === 'string' ? payload.filename : '';
+        var job = svdJobs[clientId];
+        var phase = payload.phase;
+
+        if (phase === 'start') {
+          if (!job) {
+            // 兜底：主进程收到下载但页面任务登记已丢失（例如卡片创建前异常）时自建卡片
+            var newCard = DownloadNotifier.create({
+              filename: filename || '视频文件',
+              onDismiss: function () { svdUnregister(clientId); }
+            });
+            svdJobs[clientId] = {
+              card: newCard,
+              panel: byId(RESOURCE_PANEL_ID),
+              filename: filename || '视频文件',
+              url: '',
+              blobTimer: null
+            };
+            job = svdJobs[clientId];
+          }
+          if (job && job.card) job.card.setPhase('正在接收数据…');
+          return;
+        }
+
+        if (!job || !job.card) return;
+        var card = job.card;
+        var statusEl = job.panel ? job.panel.querySelector('#' + VIDEO_STATUS_ID) : null;
+
+        if (phase === 'progress') {
+          var received = typeof payload.received === 'number' ? payload.received : null;
+          var total = typeof payload.total === 'number' ? payload.total : 0;
+          card.setProgress({
+            fraction: (total > 0 && received !== null) ? (received / total) : null,
+            loaded: received,
+            total: total
+          });
+          return;
+        }
+
+        if (phase === 'done') {
+          if (job.blobTimer) { clearTimeout(job.blobTimer); job.blobTimer = null; }
+          var doneTotal = typeof payload.total === 'number' ? payload.total : 0;
+          var doneReceived = typeof payload.received === 'number' ? payload.received : 0;
+          svdUnmapUrl(clientId);
+          card.success({
+            size: doneTotal || doneReceived,
+            name: filename || job.filename,
+            onPreview: function () { sendDownloadAction(clientId, 'open'); },
+            onDismiss: function () { svdUnregister(clientId); }
+          });
+          CompletionAlert.fire();
+          setResourceStatus(statusEl, '✅ 视频已保存：' + (filename || job.filename));
+          return;
+        }
+
+        if (phase === 'cancelled') {
+          if (job.blobTimer) { clearTimeout(job.blobTimer); job.blobTimer = null; }
+          card.cancelled();
+          svdUnmapUrl(clientId);
+          setResourceStatus(statusEl, '⏹️ 视频下载已取消。');
+          return;
+        }
+
+        if (phase === 'error') {
+          if (job.blobTimer) { clearTimeout(job.blobTimer); job.blobTimer = null; }
+          var errMsg = payload.message || '下载中断，请重试。';
+          var retryPanel = job.panel;
+          card.error(errMsg, function () {
+            svdUnregister(clientId);
+            if (retryPanel) downloadClassroomVideo(retryPanel);
+          });
+          svdUnmapUrl(clientId);
+          setResourceStatus(statusEl, '❌ 视频下载失败: ' + errMsg, true);
+        }
+      } catch (e) {}
+    });
+
     // ---------- 课堂教学视频下载 ----------
     // 说明：解密后的 TS 切片按官方方式直接封装为 video/mp4（未重封装），
     // VLC / PotPlayer / MPV 与主流浏览器均可播放；极少数严格校验 moov/mdat box 的播放器可能提示格式异常。
@@ -4382,6 +5195,8 @@ export function buildWqxtUpgradeRuntimeScript(): string {
 
     async function downloadClassroomVideo(panel) {
       if (!panel || panel.__proferVideoBusy) return;
+      // 在点击手势内预热 AudioContext，避免完成时被后台静音策略拦截
+      CompletionAlert.prime();
       var statusEl = panel.querySelector('#' + VIDEO_STATUS_ID);
       var btn = panel.querySelector('#' + VIDEO_BTN_ID);
       var select = panel.querySelector('#' + VIDEO_SELECT_ID);
@@ -4395,6 +5210,7 @@ export function buildWqxtUpgradeRuntimeScript(): string {
       var signal = controller.signal;
       var ctx = VideoAuthManager.getContext();
       videoDownloadKey = (ctx.courseId || '') + '|' + (ctx.subId || '');
+      var svdClientId = '';
       panel.__proferVideoBusy = true;
       btn.disabled = true;
       if (btnLabel) btnLabel.textContent = '正在下载…';
@@ -4430,47 +5246,115 @@ export function buildWqxtUpgradeRuntimeScript(): string {
         var safeTitle = getCourseTitle(ctx.roomVm).replace(/[\\\\/:*?\"<>|]/g, '_');
         var filename = '【' + safeTitle + '】_' + qualityLabel + '.mp4';
         if (chosenUrl.indexOf('.m3u8') === -1) {
-          setResourceStatus(statusEl, '🚀 已调起系统下载：' + filename + '（后台下载中，请在系统下载列表或下载目录查看，请勿重复点击）');
+          // 重复点击同一清晰度：不新建任务，轻晃已有卡片
+          var activeId = svdActiveByUrl[chosenUrl];
+          if (activeId && svdJobs[activeId] && svdJobs[activeId].card) {
+            svdJobs[activeId].card.nudge();
+            setResourceStatus(statusEl, '该清晰度正在下载中，请查看左下角下载卡片。');
+            restoreControls();
+            if (videoAbort === controller) videoAbort = null;
+            return;
+          }
+          svdClientId = newUuid();
+          var mp4Card = DownloadNotifier.create({
+            filename: filename,
+            onCancel: function () { sendDownloadAction(svdClientId, 'cancel'); },
+            onDismiss: function () { svdUnregister(svdClientId); }
+          });
+          mp4Card.setPhase('正在连接下载服务器…');
+          svdJobs[svdClientId] = {
+            card: mp4Card,
+            panel: panel,
+            filename: filename,
+            url: chosenUrl,
+            blobTimer: null
+          };
+          svdActiveByUrl[chosenUrl] = svdClientId;
           var downloadLink = signedUrl + (signedUrl.indexOf('?') > -1 ? '&' : '?') + 'wqxt_filename=' + encodeURIComponent(filename);
           try {
             window.postMessage({
               type: '__profer_wqxt_download',
               url: downloadLink,
-              filename: filename
+              filename: filename,
+              clientId: svdClientId
             }, '*');
           } catch (e) {}
-          if (btnLabel) btnLabel.textContent = '下载已调起';
-          setTimeout(function () {
-            restoreControls();
-            refreshVideoOptions(panel);
-          }, 8000);
-        } else {
-          setResourceStatus(statusEl, '正在拉取切片索引…');
-          var indexResp = await fetchWithRetry(signedUrl, { signal: signal }, 1);
-          var m3u8Text = await indexResp.text();
-          var segments = VideoHlsDownloader.parseM3U8(m3u8Text, signedUrl);
-          if (!segments.length) throw new Error('未在 m3u8 中解析到有效分片');
-          var segmentBuffers = await VideoHlsDownloader.downloadSegments(segments, signal, function (cur, tot, pct) {
-            setResourceStatus(statusEl, '正在拉取切片 ' + cur + '/' + tot + ' (' + pct + '%)');
-          });
-          setResourceStatus(statusEl, '正在合并保存 MP4 文件…');
-          VideoHlsDownloader.exportMergedFile(segmentBuffers, filename);
-          segmentBuffers = null;
-          setResourceStatus(statusEl, '✅ 视频下载完成：' + filename);
+          setResourceStatus(statusEl, '已转入左下角下载卡片，可继续看课。');
+          restoreControls();
+          if (videoAbort === controller) videoAbort = null;
+          return;
         }
+
+        setResourceStatus(statusEl, '正在拉取切片索引…');
+        svdClientId = newUuid();
+        var hlsCard = DownloadNotifier.create({
+          filename: filename,
+          onCancel: function () {
+            try { controller.abort(); } catch (e) {}
+            sendDownloadAction(svdClientId, 'cancel');
+          },
+          onDismiss: function () { svdUnregister(svdClientId); }
+        });
+        hlsCard.setPhase('正在拉取切片索引…');
+        svdJobs[svdClientId] = {
+          card: hlsCard,
+          panel: panel,
+          filename: filename,
+          url: chosenUrl,
+          blobTimer: null
+        };
+        svdActiveByUrl[chosenUrl] = svdClientId;
+
+        var indexResp = await fetchWithRetry(signedUrl, { signal: signal }, 1);
+        var m3u8Text = await indexResp.text();
+        var segments = VideoHlsDownloader.parseM3U8(m3u8Text, signedUrl);
+        if (!segments.length) throw new Error('未在 m3u8 中解析到有效分片');
+        var segmentBuffers = await VideoHlsDownloader.downloadSegments(segments, signal, function (cur, tot, pct) {
+          hlsCard.setProgress({
+            fraction: tot > 0 ? (cur / tot) : null,
+            detail: '切片 ' + cur + ' / ' + tot
+          });
+        });
+        hlsCard.setPhase('正在合并并写入文件…');
+        setResourceStatus(statusEl, '正在合并保存 MP4 文件…');
+        // 先向主进程登记 blob 文件名，供 will-download 关联 clientId
+        sendDownloadAction(svdClientId, 'blob', filename);
+        var hlsJob = svdJobs[svdClientId];
+        if (hlsJob) {
+          hlsJob.blobTimer = setTimeout(function () {
+            var liveJob = svdJobs[svdClientId];
+            if (!liveJob || !liveJob.card) return;
+            liveJob.blobTimer = null;
+            if (liveJob.card.getState() === 'running') liveJob.card.handedOff();
+          }, 6000);
+        }
+        VideoHlsDownloader.exportMergedFile(segmentBuffers, filename);
+        segmentBuffers = null;
       } catch (err) {
+        var failedJob = svdClientId ? svdJobs[svdClientId] : null;
         if (err && err.name === 'AbortError') {
           setResourceStatus(statusEl, '⏹️ 视频下载已取消。');
+          if (failedJob && failedJob.card) {
+            failedJob.card.cancelled();
+            svdUnmapUrl(svdClientId);
+          }
         } else {
-          setResourceStatus(statusEl, '❌ 视频下载失败: ' + (err && err.message ? err.message : String(err)), true);
+          var errText = err && err.message ? err.message : String(err);
+          setResourceStatus(statusEl, '❌ 视频下载失败: ' + errText, true);
+          if (failedJob && failedJob.card) {
+            var retryId = svdClientId;
+            failedJob.card.error(errText, function () {
+              svdUnregister(retryId);
+              downloadClassroomVideo(panel);
+            });
+            svdUnmapUrl(svdClientId);
+          }
         }
       } finally {
-        if (chosenUrl.indexOf('.m3u8') !== -1) {
-          if (videoAbort === controller) videoAbort = null;
-          if (videoDownloadKey !== '') videoDownloadKey = '';
-          restoreControls();
-          refreshVideoOptions(panel);
-        }
+        if (videoAbort === controller) videoAbort = null;
+        if (videoDownloadKey !== '') videoDownloadKey = '';
+        restoreControls();
+        refreshVideoOptions(panel);
       }
     }
 
@@ -5029,6 +5913,18 @@ export function buildWqxtUpgradeRuntimeScript(): string {
         videoAbort = null;
         videoDownloadKey = '';
       }
+      // 清理下载卡片与任务登记；不主动取消主进程已开始的原生下载
+      for (var svdId in svdJobs) {
+        if (Object.prototype.hasOwnProperty.call(svdJobs, svdId)) {
+          try {
+            if (svdJobs[svdId] && svdJobs[svdId].card) svdJobs[svdId].card.dismiss(true);
+          } catch (e) {}
+        }
+      }
+      svdJobs = {};
+      svdActiveByUrl = {};
+      var svdStackNode = byId(SVD_STACK_ID);
+      if (svdStackNode && svdStackNode.parentNode) svdStackNode.parentNode.removeChild(svdStackNode);
       if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
       if (qrPollTimer) { clearInterval(qrPollTimer); qrPollTimer = null; }
       if (headerPollTimer) { clearInterval(headerPollTimer); headerPollTimer = null; }
@@ -5110,6 +6006,11 @@ export function buildWqxtUpgradeRuntimeScript(): string {
     }
 
     window.__proferWqxtUpgrader = { sync: sync, destroy: destroy };
+    window.__proferWqxtDownloader = {
+      CONFIG: SVD_CONFIG,
+      DownloadNotifier: DownloadNotifier,
+      CompletionAlert: CompletionAlert
+    };
     sync();
   } catch (e) {}
 })();`
