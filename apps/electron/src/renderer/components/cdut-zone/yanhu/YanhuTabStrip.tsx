@@ -71,6 +71,9 @@ export function YanhuTabStrip({
               onDragStart={() => {
                 dragIdRef.current = tab.id
               }}
+              onDragEnd={() => {
+                dragIdRef.current = null
+              }}
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => {
                 event.preventDefault()

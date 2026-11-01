@@ -22,18 +22,20 @@ export const WQXT_CLEANER_HOSTNAME = 'classroom.wqxt.cdut.edu.cn'
 export const WQXT_LIVINGROOM_STYLE_ID = '__profer-wqxt-livingroom-css'
 
 /**
- * 课堂教学页必须完全屏蔽的 7 类目标节点（严格命中目标节点本身，不删父容器）。
+ * 课堂教学页必须完全屏蔽的目标节点（严格命中目标节点本身，不删父容器）。
+ * 注：原版 `div.relative-info-left`（包含课程目录与详情）不在此处物理移除，而是由升级器 CSS 安全隐蔽，
+ * 并提取其目录数据重写为现代化扁平紧凑卡片和大窗口，保留原始 Vue 事件监听以供委托代理。
  *
- * 第 5、6 项为并列选择器：
+ * 并列选择器：
  *   - `p.list_title[data-v-623bb81c]` 是「猜你喜欢」标题（`prune()` 另有文本兜底）；
  *   - `div.items-wrapper[data-v-623bb81c]` 是右侧推荐课程列表项容器（仅移除该节点）；
  *   - `.cmc-base.cmc-expand` 为平铺水印层，连同其 `.expand-mask` 子树整体移除。
  *
- * 第 7 项为「问题反馈」悬浮按钮（`div.feedback-wrapper`），三种变体合并且仅移除节点本身。
+ * 「问题反馈」悬浮按钮（`div.feedback-wrapper`），三种变体合并且仅移除节点本身。
  */
 export const WQXT_LIVINGROOM_HIDE_SELECTORS: readonly string[] = [
   'div.header-wrapper-cdlg',
-  'div.relative-info-left',
+  'div.relative-info-left > :not(.course-catalogue-wrapper):not(.item-wrapper):not(:has(.catalogue-item))',
   'div.custom-footer',
   'div.another-course-wrapper',
   'p.list_title[data-v-623bb81c], p.list_title:has(+ div.items-wrapper), div.items-wrapper[data-v-623bb81c], :not(.another-course-wrapper) > div.items-wrapper:has(> .item > .image-wrapper > img.course_img)',
@@ -78,7 +80,7 @@ export function buildWqxtLivingRoomCleanerScript(): string {
 
     var CSS_ID = ${JSON.stringify(WQXT_LIVINGROOM_STYLE_ID)};
     var SELECTORS = ${selectorsJson};
-    var CSS_TEXT = SELECTORS.join(',') + '{display:none !important;visibility:hidden !important;pointer-events:none !important;}';
+    var CSS_TEXT = SELECTORS.join(',') + '{display:none !important;visibility:hidden !important;pointer-events:none !important;}' + 'div.relative-info-left{position:absolute!important;opacity:0!important;visibility:hidden!important;pointer-events:none!important;height:0!important;max-height:0!important;overflow:hidden!important;margin:0!important;padding:0!important;border:none!important;z-index:-9999!important;}';
 
     var existing = window.__proferWqxtCleaner;
     if (existing && typeof existing.refresh === 'function') {
@@ -132,7 +134,7 @@ export function buildWqxtLivingRoomCleanerScript(): string {
       }
     }
 
-    /** 仅在命中节点时写 DOM；严格删除节点本身，保留父容器 */
+    /** 仅在命中节点时写 DOM；严格删除节点本身，保留父容器与课程目录节点 */
     function prune() {
       for (var i = 0; i < SELECTORS.length; i++) {
         var nodes;
@@ -140,6 +142,9 @@ export function buildWqxtLivingRoomCleanerScript(): string {
         for (var j = 0; j < nodes.length; j++) {
           var node = nodes[j];
           if (!node || !node.parentNode) continue;
+          // 绝对保全课程目录相关节点
+          if (node.classList && (node.classList.contains('item-wrapper') || node.classList.contains('catalogue-item') || node.classList.contains('course-catalogue-wrapper'))) continue;
+          if (node.querySelector && node.querySelector('.catalogue-item, .item-wrapper')) continue;
           try {
             node.remove();
           } catch (e) {

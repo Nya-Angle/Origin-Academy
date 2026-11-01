@@ -15,7 +15,7 @@ import {
   type YanhuUrlChangedEvent,
   type YanhuViewLayout,
 } from '@profer/shared'
-import type { AppSettings, ElectronAPI, SkinInfo, YanhuViewportRect } from '../types'
+import type { AppSettings, ElectronAPI, YanhuViewportRect } from '../types'
 
 function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {
   const listener = (_event: Electron.IpcRendererEvent, payload: T): void => cb(payload)
@@ -29,12 +29,6 @@ const electronAPI: ElectronAPI = {
   getSettings: () => ipcRenderer.invoke('settings:get') as Promise<AppSettings>,
   updateSettings: (patch: Partial<AppSettings>) =>
     ipcRenderer.invoke('settings:update', patch) as Promise<AppSettings>,
-  getSystemTheme: () => ipcRenderer.invoke('theme:get-system') as Promise<boolean>,
-  onSystemThemeChanged: (cb: (isDark: boolean) => void) => subscribe('theme:system-changed', cb),
-  onThemeSettingsChanged: (cb: (settings: AppSettings) => void) => subscribe('theme:settings-changed', cb),
-  getSkins: () => ipcRenderer.invoke('skins:list') as Promise<SkinInfo[]>,
-  refreshSkins: () => ipcRenderer.invoke('skins:refresh') as Promise<SkinInfo[]>,
-  getSkinCss: (id: string) => ipcRenderer.invoke('skins:get-css', id) as Promise<string | null>,
 
   yanhuExpress: {
     onTabsChanged: (cb: (state: YanhuTabsState) => void) => subscribe(CH.ON_TABS_CHANGED, cb),
@@ -54,6 +48,10 @@ const electronAPI: ElectronAPI = {
     activateTab: (input: { tabId: string }) =>
       ipcRenderer.invoke(CH.ACTIVATE_TAB, input) as Promise<YanhuTabsState>,
     closeTab: (input: { tabId: string }) => ipcRenderer.invoke(CH.CLOSE_TAB, input) as Promise<YanhuTabsState>,
+    closeOtherTabs: (input: { tabId?: string }) =>
+      ipcRenderer.invoke(CH.CLOSE_OTHER_TABS, input) as Promise<YanhuTabsState>,
+    closeRightTabs: (input: { tabId?: string }) =>
+      ipcRenderer.invoke(CH.CLOSE_RIGHT_TABS, input) as Promise<YanhuTabsState>,
     reorderTabs: (input: { orderedTabIds: string[] }) =>
       ipcRenderer.invoke(CH.REORDER_TABS, input) as Promise<YanhuTabsState>,
 

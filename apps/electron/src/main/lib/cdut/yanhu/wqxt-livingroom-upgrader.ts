@@ -6,6 +6,14 @@
  */
 
 import { CDUT_STUDIO_LOGO_DATA_URL } from './wqxt-logo-data-url'
+import {
+  WQXT_AI_DOCK_ID,
+  WQXT_AI_PANEL_ID,
+  WQXT_AI_PANEL_CSS,
+  buildAiDockHtml,
+  buildAiPanelHtml,
+  buildWqxtAiPanelRuntimeScript,
+} from './wqxt-ai-panel'
 
 /** 顶栏宿主节点 ID */
 export const WQXT_EDU_HEADER_ID = '__profer-wqxt-edu-header'
@@ -27,10 +35,10 @@ export const WQXT_VIDEO_STATUS_ID = '__profer-video-status'
 export const WQXT_FOOTER_ID = '__profer-wqxt-footer'
 /** 扫码观看全局模态层 ID */
 export const WQXT_QR_MODAL_ID = '__profer-qr-modal'
-/** AI 问渠助手 Dock 胶囊 ID */
-export const WQXT_AI_DOCK_ID = '__profer-ai-dock-btn'
-/** AI 问渠助手留白窗体 ID */
-export const WQXT_AI_PANEL_ID = '__profer-ai-panel'
+/** 课程目录紧凑卡片宿主 ID */
+export const WQXT_CATALOGUE_PANEL_ID = '__profer-wqxt-catalogue-panel'
+/** 课程目录全览大窗口宿主 ID */
+export const WQXT_CATALOGUE_MODAL_ID = '__profer-catalogue-modal'
 
 /**
  * 升级器作用域 CSS：逐字取自模板。
@@ -49,6 +57,22 @@ div.header-info.profer-wqxt-header-upgraded {
   border: none !important;
   overflow: visible !important;
   display: block !important;
+}
+div.relative-info-left,
+div.course-catalogue-wrapper,
+div.item-wrapper:has(.catalogue-item),
+.relative-info-left .item-wrapper {
+  position: absolute !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  z-index: -9999 !important;
 }
 div.header-info.profer-wqxt-header-upgraded > :not(#__profer-wqxt-edu-header) {
   display: none !important;
@@ -1210,10 +1234,23 @@ div.header-info.profer-wqxt-header-upgraded > :not(#__profer-wqxt-edu-header) {
   box-shadow: 0 8px 28px rgba(15, 23, 42, 0.08) !important;
 }
 
-/* 3.6 下方右列：Tab 切换 / 笔记 / 互动聊天 / 学习日志 */
-.living-page-content #contentRight > .portalroom-tab-switch {
+/* 3.6 下方右列：课程目录卡片（置于 PPT 下方、笔记上方） */
+#__profer-wqxt-catalogue-panel {
   grid-column: 2 / 3 !important;
   grid-row: 2 / 3 !important;
+}
+
+/* 单流（无 PPT）模式下全宽横跨于主视频下方 */
+.living-page-content .content-info:not(:has(#ppt_container)):not(:has(.stu_screen_con)) > #__profer-wqxt-catalogue-panel,
+.living-page-content .content-info:not(:has(#ppt_container)):not(:has(.stu_screen_con)) #contentRight > #__profer-wqxt-catalogue-panel {
+  grid-column: 1 / -1 !important;
+  grid-row: 2 / 3 !important;
+}
+
+/* 3.7 下方右列：Tab 切换 / 笔记 / 互动聊天 / 学习日志 */
+.living-page-content #contentRight > .portalroom-tab-switch {
+  grid-column: 2 / 3 !important;
+  grid-row: 3 / 4 !important;
   width: 100% !important;
   font-size: 15px !important;
   margin-bottom: -16px !important;
@@ -1224,7 +1261,7 @@ div.header-info.profer-wqxt-header-upgraded > :not(#__profer-wqxt-edu-header) {
 }
 .living-page-content #contentRight > .tool_wrap {
   grid-column: 2 / 3 !important;
-  grid-row: 3 / 4 !important;
+  grid-row: 4 / 5 !important;
   position: relative !important;
   width: 100% !important;
   min-height: 300px !important;
@@ -1240,14 +1277,14 @@ div.header-info.profer-wqxt-header-upgraded > :not(#__profer-wqxt-edu-header) {
 }
 .living-page-content #contentRight > .chart {
   grid-column: 2 / 3 !important;
-  grid-row: 3 / 4 !important;
+  grid-row: 4 / 5 !important;
   width: 100% !important;
   min-height: 300px !important;
   border-radius: 14px !important;
 }
 .living-page-content #contentRight > .editor_wrap {
   grid-column: 2 / 3 !important;
-  grid-row: 3 / 4 !important;
+  grid-row: 4 / 5 !important;
   position: relative !important;
   top: auto !important;
   bottom: auto !important;
@@ -1350,7 +1387,7 @@ div.header-info.profer-wqxt-header-upgraded > :not(#__profer-wqxt-edu-header) {
 /* 3.8 下方左列：学习资源下载区 */
 #__profer-wqxt-resource-panel {
   grid-column: 1 / 2 !important;
-  grid-row: 2 / 4 !important;
+  grid-row: 2 / 5 !important;
   align-self: stretch !important;
   position: relative !important;
   width: 100% !important;
@@ -1930,7 +1967,7 @@ div.header-info.profer-wqxt-header-upgraded > :not(#__profer-wqxt-edu-header) {
   right: 24px !important;
   bottom: 92px !important;
   z-index: 9998 !important;
-  width: 560px !important;
+  width: 760px !important;
   max-width: calc(100vw - 40px) !important;
   height: 75vh !important;
   max-height: 800px !important;
@@ -2198,8 +2235,34 @@ div.header-info.profer-wqxt-header-upgraded > :not(#__profer-wqxt-edu-header) {
   }
 }
 
+
+/* 3.9 单流课程自适应对齐 */
+.living-page-content .content-info:not(:has(#ppt_container)):not(:has(.stu_screen_con)) > #__profer-wqxt-catalogue-panel,
+.living-page-content .content-info:not(:has(#ppt_container)):not(:has(.stu_screen_con)) #contentRight > #__profer-wqxt-catalogue-panel {
+  grid-column: 1 / -1 !important;
+  grid-row: 2 / 3 !important;
+}
+.living-page-content .content-info:not(:has(#ppt_container)):not(:has(.stu_screen_con)) > #__profer-wqxt-resource-panel {
+  grid-column: 1 / 2 !important;
+  grid-row: 3 / 5 !important;
+}
+.living-page-content .content-info:not(:has(#ppt_container)):not(:has(.stu_screen_con)) #contentRight > .portalroom-tab-switch {
+  grid-column: 2 / 3 !important;
+  grid-row: 3 / 4 !important;
+}
+.living-page-content .content-info:not(:has(#ppt_container)):not(:has(.stu_screen_con)) #contentRight > .tool_wrap,
+.living-page-content .content-info:not(:has(#ppt_container)):not(:has(.stu_screen_con)) #contentRight > .chart,
+.living-page-content .content-info:not(:has(#ppt_container)):not(:has(.stu_screen_con)) #contentRight > .editor_wrap {
+  grid-column: 2 / 3 !important;
+  grid-row: 4 / 5 !important;
+}
+
 /* 3.10 窄屏响应式处理 */
 @media (max-width: 1100px) {
+  #__profer-wqxt-catalogue-panel {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+  }
   .living-page-content .content-info {
     grid-template-columns: 1fr !important;
   }
@@ -2227,6 +2290,522 @@ div.header-info.profer-wqxt-header-upgraded > :not(#__profer-wqxt-edu-header) {
     grid-row: auto !important;
   }
 }
+
+/* ===== 极简滚动条：扁平淡粉灰矩形 thumb，小圆角，无边框无轨道底色 ===== */
+* {
+  scrollbar-width: thin !important;
+  scrollbar-color: #D7CBD2 transparent !important;
+}
+*::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+}
+*::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+*::-webkit-scrollbar-thumb {
+  background: #D7CBD2 !important;
+  border: none !important;
+  border-radius: 3px !important;
+  box-shadow: none !important;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #C2B0BA !important;
+}
+*::-webkit-scrollbar-corner {
+  background: transparent !important;
+}
+
+/* ===== 4. 扁平极致轻量化「课程目录」紧凑卡片 (#__profer-wqxt-catalogue-panel) ===== */
+#__profer-wqxt-catalogue-panel {
+  grid-column: 2 / 3 !important;
+  grid-row: 2 / 3 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  border-radius: 14px !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04) !important;
+  padding: 10px 14px 12px 14px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  overflow: hidden !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
+  color: #0f172a !important;
+}
+#__profer-wqxt-catalogue-panel * {
+  box-sizing: border-box !important;
+}
+#__profer-wqxt-catalogue-panel .profer-cat-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  padding-bottom: 2px !important;
+}
+#__profer-wqxt-catalogue-panel .profer-cat-title-wrap {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+}
+#__profer-wqxt-catalogue-panel .profer-cat-icon {
+  width: 16px !important;
+  height: 16px !important;
+  color: #4f46e5 !important;
+  flex-shrink: 0 !important;
+}
+#__profer-wqxt-catalogue-panel .profer-cat-title {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  letter-spacing: -0.01em !important;
+  white-space: nowrap !important;
+}
+#__profer-wqxt-catalogue-panel .profer-cat-count {
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  color: #64748b !important;
+  background: #f1f5f9 !important;
+  padding: 1px 7px !important;
+  border-radius: 9999px !important;
+  white-space: nowrap !important;
+}
+#__profer-wqxt-catalogue-panel .profer-cat-current {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #4f46e5 !important;
+  background: #eef2ff !important;
+  border: 1px solid rgba(79, 70, 229, 0.15) !important;
+  padding: 1px 8px !important;
+  border-radius: 9999px !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  overflow: hidden !important;
+  max-width: 140px !important;
+}
+#__profer-wqxt-catalogue-panel .profer-cat-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  flex-shrink: 0 !important;
+}
+#__profer-wqxt-catalogue-panel .profer-cat-action-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  height: 26px !important;
+  padding: 0 9px !important;
+  border-radius: 7px !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  color: #475569 !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  outline: none !important;
+}
+#__profer-wqxt-catalogue-panel .profer-cat-action-btn:hover {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+#__profer-wqxt-catalogue-panel .profer-cat-action-btn.primary {
+  background: #f5f3ff !important;
+  color: #6d28d9 !important;
+  border-color: rgba(109, 40, 217, 0.2) !important;
+}
+#__profer-wqxt-catalogue-panel .profer-cat-action-btn.primary:hover {
+  background: #ede9fe !important;
+  border-color: rgba(109, 40, 217, 0.35) !important;
+}
+#__profer-wqxt-catalogue-panel .profer-cat-action-btn svg {
+  width: 12px !important;
+  height: 12px !important;
+}
+
+/* 紧凑滑动区 */
+#__profer-wqxt-catalogue-panel .profer-cat-body {
+  position: relative !important;
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+}
+#__profer-wqxt-catalogue-panel .profer-cat-scroll-track {
+  display: flex !important;
+  align-items: stretch !important;
+  gap: 10px !important;
+  width: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scroll-behavior: smooth !important;
+  padding: 2px 2px 4px 2px !important;
+  scrollbar-width: thin !important;
+}
+#__profer-wqxt-catalogue-panel .profer-cat-nav-btn {
+  position: absolute !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  z-index: 5 !important;
+  width: 24px !important;
+  height: 38px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 1px solid #e2e8f0 !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: blur(4px) !important;
+  border-radius: 6px !important;
+  color: #475569 !important;
+  cursor: pointer !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12) !important;
+  transition: all 0.15s ease !important;
+}
+#__profer-wqxt-catalogue-panel .profer-cat-nav-btn:hover {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+#__profer-wqxt-catalogue-panel .profer-cat-nav-btn.prev {
+  left: 0 !important;
+}
+#__profer-wqxt-catalogue-panel .profer-cat-nav-btn.next {
+  right: 0 !important;
+}
+
+/* 单个紧凑卡片 */
+.profer-cat-card {
+  flex: 0 0 118px !important;
+  width: 118px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 5px !important;
+  cursor: pointer !important;
+  border-radius: 8px !important;
+  padding: 4px !important;
+  border: 1.5px solid transparent !important;
+  transition: all 0.15s ease !important;
+  user-select: none !important;
+}
+.profer-cat-card:hover {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+.profer-cat-card.is-active {
+  background: #f5f3ff !important;
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.25) !important;
+}
+.profer-cat-thumb-wrap {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 16 / 9 !important;
+  border-radius: 6px !important;
+  overflow: hidden !important;
+  background: #0f172a !important;
+}
+.profer-cat-thumb {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+  transition: transform 0.2s ease !important;
+}
+.profer-cat-card:hover .profer-cat-thumb {
+  transform: scale(1.04) !important;
+}
+.profer-cat-fallback {
+  display: none !important;
+  width: 100% !important;
+  height: 100% !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: linear-gradient(135deg, #1e293b, #334155) !important;
+  color: #94a3b8 !important;
+}
+.profer-cat-fallback svg {
+  width: 18px !important;
+  height: 18px !important;
+}
+.profer-cat-badge-playing {
+  position: absolute !important;
+  top: 3px !important;
+  left: 3px !important;
+  background: #4f46e5 !important;
+  color: #ffffff !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  padding: 2px 4px !important;
+  border-radius: 3px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+.profer-cat-name {
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  line-height: 1.3 !important;
+  color: #334155 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  margin: 0 !important;
+  text-align: center !important;
+}
+.profer-cat-card.is-active .profer-cat-name {
+  color: #4f46e5 !important;
+  font-weight: 700 !important;
+}
+
+/* ===== 5. 模态大窗口全览 (#__profer-catalogue-modal) ===== */
+#__profer-catalogue-modal {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 10000 !important;
+  display: none !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
+}
+#__profer-catalogue-modal.is-open {
+  display: flex !important;
+}
+#__profer-catalogue-modal * {
+  box-sizing: border-box !important;
+}
+#__profer-catalogue-modal .profer-cat-modal-mask {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: rgba(15, 23, 42, 0.45) !important;
+  backdrop-filter: blur(6px) !important;
+  cursor: pointer !important;
+}
+#__profer-catalogue-modal .profer-cat-modal-dialog {
+  position: relative !important;
+  z-index: 2 !important;
+  width: 860px !important;
+  max-width: calc(100vw - 48px) !important;
+  max-height: calc(100vh - 80px) !important;
+  background: #ffffff !important;
+  border-radius: 16px !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 20px 50px -10px rgba(15, 23, 42, 0.22) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  animation: proferCatFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+@keyframes proferCatFadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+#__profer-catalogue-modal .profer-cat-modal-header {
+  padding: 16px 20px 14px 20px !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  background: #ffffff !important;
+}
+#__profer-catalogue-modal .profer-cat-modal-title-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+}
+#__profer-catalogue-modal .profer-cat-modal-title-group {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+}
+#__profer-catalogue-modal .profer-cat-modal-title {
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  margin: 0 !important;
+}
+#__profer-catalogue-modal .profer-cat-modal-count {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: #64748b !important;
+  background: #f1f5f9 !important;
+  padding: 2px 8px !important;
+  border-radius: 9999px !important;
+}
+#__profer-catalogue-modal .profer-cat-modal-current {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #4f46e5 !important;
+  background: #eef2ff !important;
+  border: 1px solid rgba(79, 70, 229, 0.15) !important;
+  padding: 2px 10px !important;
+  border-radius: 9999px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 220px !important;
+}
+#__profer-catalogue-modal .profer-cat-modal-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+#__profer-catalogue-modal .profer-cat-modal-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  height: 30px !important;
+  padding: 0 12px !important;
+  border-radius: 8px !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  color: #475569 !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+#__profer-catalogue-modal .profer-cat-modal-btn:hover {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+#__profer-catalogue-modal .profer-cat-modal-close-btn {
+  width: 30px !important;
+  height: 30px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: none !important;
+  background: #f1f5f9 !important;
+  color: #64748b !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+#__profer-catalogue-modal .profer-cat-modal-close-btn:hover {
+  background: #fee2e2 !important;
+  color: #ef4444 !important;
+}
+
+/* 模态内搜索框 */
+#__profer-catalogue-modal .profer-cat-modal-search-wrap {
+  position: relative !important;
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+}
+#__profer-catalogue-modal .profer-cat-modal-search-icon {
+  position: absolute !important;
+  left: 12px !important;
+  width: 14px !important;
+  height: 14px !important;
+  color: #94a3b8 !important;
+  pointer-events: none !important;
+}
+#__profer-catalogue-modal .profer-cat-modal-search-input {
+  width: 100% !important;
+  height: 36px !important;
+  padding: 0 34px 0 34px !important;
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  color: #0f172a !important;
+  outline: none !important;
+  transition: all 0.15s ease !important;
+}
+#__profer-catalogue-modal .profer-cat-modal-search-input:focus {
+  background: #ffffff !important;
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12) !important;
+}
+#__profer-catalogue-modal .profer-cat-modal-search-clear {
+  position: absolute !important;
+  right: 10px !important;
+  width: 18px !important;
+  height: 18px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: #cbd5e1 !important;
+  color: #ffffff !important;
+  font-size: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+}
+#__profer-catalogue-modal .profer-cat-modal-search-clear:hover {
+  background: #94a3b8 !important;
+}
+
+/* 模态内大网格 */
+#__profer-catalogue-modal .profer-cat-modal-body {
+  padding: 16px 20px 20px 20px !important;
+  overflow-y: auto !important;
+  flex: 1 1 auto !important;
+}
+#__profer-catalogue-modal .profer-cat-modal-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)) !important;
+  gap: 12px !important;
+}
+.profer-cat-modal-card {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  padding: 6px !important;
+  border-radius: 10px !important;
+  border: 1.5px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  cursor: pointer !important;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+.profer-cat-modal-card:hover {
+  border-color: #a5b4fc !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08) !important;
+}
+.profer-cat-modal-card.is-active {
+  border-color: #6366f1 !important;
+  background: #f5f3ff !important;
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.25) !important;
+}
+.profer-cat-modal-card .profer-cat-thumb-wrap {
+  aspect-ratio: 16 / 9 !important;
+  border-radius: 6px !important;
+}
+.profer-cat-modal-card .profer-cat-name {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: #1e293b !important;
+  text-align: left !important;
+  padding: 0 2px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+.profer-cat-modal-card.is-active .profer-cat-name {
+  color: #4f46e5 !important;
+  font-weight: 700 !important;
+}
+#__profer-catalogue-modal .profer-cat-modal-empty {
+  padding: 40px 20px !important;
+  text-align: center !important;
+  color: #94a3b8 !important;
+  font-size: 13px !important;
+}
+
 `.trim()
 
 /** 顶栏 HTML：逐字取自模板，仅注入 Base64 图标 */
@@ -2330,77 +2909,6 @@ function buildQrModalHtml(): string {
       <img id="__profer-qr-img" src="" alt="扫码观看二维码" />
     </div>
     <p class="qr-modal-hint">打开微信扫一扫，即可在手机上继续观看本堂课</p>
-  </div>
-</div>`
-}
-
-/** AI 问渠助手悬浮 Dock 胶囊 HTML */
-function buildAiDockHtml(): string {
-  return `<button class="ai-dock-btn" id="${WQXT_AI_DOCK_ID}" type="button" aria-label="打开 AI 问渠助手">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z"></path>
-    <path d="M18.5 14l.9 2.4 2.6.9-2.6.9-.9 2.4-.9-2.4-2.6-.9 2.6-.9z"></path>
-  </svg>
-  <span>AI 问渠助手</span>
-</button>`
-}
-
-/** AI 问渠助手大尺寸毛玻璃留白窗体 HTML */
-function buildAiPanelHtml(): string {
-  return `<div class="ai-panel" id="${WQXT_AI_PANEL_ID}" aria-hidden="true">
-  <div class="ai-panel-header">
-    <span class="ai-panel-logo">
-      <img src="${CDUT_STUDIO_LOGO_DATA_URL}" alt="CDUT Studio" draggable="false" />
-    </span>
-    <div class="ai-panel-title-col">
-      <h3 class="ai-panel-title">CDUT Studio AI 助手</h3>
-      <span class="ai-panel-status"><span class="ai-panel-status-dot"></span>对齐测试中</span>
-    </div>
-    <div class="ai-panel-actions">
-      <button class="ai-panel-min" id="__profer-ai-min" type="button" aria-label="最小化">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-      </button>
-      <button class="ai-panel-close" id="__profer-ai-close" type="button" aria-label="关闭">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-        </svg>
-      </button>
-    </div>
-  </div>
-  <div class="ai-panel-body">
-    <div class="ai-panel-badge-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 2.5l1.9 5.2 5.2 1.9-5.2 1.9-1.9 5.2-1.9-5.2L5 9.6l5.2-1.9z"></path>
-        <path d="M18.8 15l.9 2.4 2.4.9-2.4.9-.9 2.4-.9-2.4-2.4-.9 2.4-.9z"></path>
-      </svg>
-    </div>
-    <h2 class="ai-panel-main-title">雫窝中央实验室 · 大模型对齐测试中</h2>
-    <p class="ai-panel-notice"><strong>雫窝正在对大模型接入进行安全对齐和实验室测试，当前版本暂不开放捏~</strong></p>
-    <div class="ai-panel-skeleton">
-      <div class="ai-panel-skeleton-row">
-        <div class="ai-panel-model-select">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2l9 5-9 5-9-5z"></path>
-            <path d="M3 12l9 5 9-5"></path>
-            <path d="M3 17l9 5 9-5"></path>
-          </svg>
-          <span>模型选择（待接入）</span>
-          <span>▾</span>
-        </div>
-      </div>
-      <div class="ai-panel-skeleton-row">
-        <div class="ai-panel-prompt-slot">输入你的问题，等待大模型接入…</div>
-        <div class="ai-panel-send-slot">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="22" y1="2" x2="11" y2="13"></line>
-            <polygon points="22 2 15 22 11 13 2 9"></polygon>
-          </svg>
-        </div>
-      </div>
-    </div>
   </div>
 </div>`
 }
@@ -2639,6 +3147,73 @@ function buildResourcePanelHtml(): string {
 }
 
 /** 底部 CDUT Studio 通栏底栏 HTML */
+
+function buildCataloguePanelHtml(): string {
+  return `<section class="profer-catalogue-panel" id="${WQXT_CATALOGUE_PANEL_ID}" style="display: none;">
+  <div class="profer-cat-header">
+    <div class="profer-cat-title-wrap">
+      <svg class="profer-cat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+      </svg>
+      <span class="profer-cat-title">课程目录</span>
+      <span class="profer-cat-count" id="__profer-cat-count">共 0 节</span>
+      <span class="profer-cat-current" id="__profer-cat-current" style="display: none;"></span>
+    </div>
+    <div class="profer-cat-actions">
+      <button class="profer-cat-action-btn primary" id="__profer-cat-btn-expand" type="button" title="全览并选择课程节次">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+        <span>全览大窗口</span>
+      </button>
+    </div>
+  </div>
+  <div class="profer-cat-body">
+    <button class="profer-cat-nav-btn prev" id="__profer-cat-scroll-left" type="button" aria-label="向左滑动" style="display: none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>
+    <div class="profer-cat-scroll-track" id="__profer-cat-scroll-track"></div>
+    <button class="profer-cat-nav-btn next" id="__profer-cat-scroll-right" type="button" aria-label="向右滑动" style="display: none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>
+  </div>
+</section>`
+}
+
+function buildCatalogueModalHtml(): string {
+  return `<div class="profer-cat-modal" id="${WQXT_CATALOGUE_MODAL_ID}" style="display: none;">
+  <div class="profer-cat-modal-mask" id="__profer-cat-modal-mask"></div>
+  <div class="profer-cat-modal-dialog" role="dialog" aria-modal="true" aria-label="课程目录全览">
+    <div class="profer-cat-modal-header">
+      <div class="profer-cat-modal-title-row">
+        <div class="profer-cat-modal-title-group">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+          </svg>
+          <h3 class="profer-cat-modal-title">课程目录全览</h3>
+          <span class="profer-cat-modal-count" id="__profer-cat-modal-count">共 0 节</span>
+          <span class="profer-cat-modal-current" id="__profer-cat-modal-current" style="display: none;"></span>
+        </div>
+        <div class="profer-cat-modal-actions">
+          <button class="profer-cat-modal-close-btn" id="__profer-cat-modal-close-btn" type="button" title="关闭 (ESC)">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+      </div>
+      <div class="profer-cat-modal-search-wrap">
+        <svg class="profer-cat-modal-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="__profer-cat-modal-search-input" class="profer-cat-modal-search-input" placeholder="输入日期或节次过滤（如 09-07、第9节）…" />
+        <button class="profer-cat-modal-search-clear" id="__profer-cat-modal-search-clear" type="button" style="display: none;">&times;</button>
+      </div>
+    </div>
+    <div class="profer-cat-modal-body" id="__profer-cat-modal-grid"></div>
+    <div class="profer-cat-modal-empty" id="__profer-cat-modal-empty" style="display: none;">
+      <p>未找到匹配的节次</p>
+    </div>
+  </div>
+</div>`
+}
+
 function buildFooterHtml(): string {
   return `<footer class="profer-wqxt-footer-card" id="${WQXT_FOOTER_ID}">
   <div class="footer-content">
@@ -2657,7 +3232,7 @@ function buildFooterHtml(): string {
  * sync() 幂等：只在缺失时创建节点，文本仅在变化时写入，避免自触发 MutationObserver。
  */
 export function buildWqxtUpgradeRuntimeScript(): string {
-  const cssJson = JSON.stringify(WQXT_UPGRADE_CSS)
+  const cssJson = JSON.stringify(WQXT_UPGRADE_CSS + '\n' + WQXT_AI_PANEL_CSS)
   const headerHtmlJson = JSON.stringify(buildHeaderHtml())
   const qrModalHtmlJson = JSON.stringify(buildQrModalHtml())
   const aiDockHtmlJson = JSON.stringify(buildAiDockHtml())
@@ -2665,6 +3240,8 @@ export function buildWqxtUpgradeRuntimeScript(): string {
   const playerHtmlJson = JSON.stringify(buildPlayerHtml())
   const resourcePanelHtmlJson = JSON.stringify(buildResourcePanelHtml())
   const footerHtmlJson = JSON.stringify(buildFooterHtml())
+  const cataloguePanelHtmlJson = JSON.stringify(buildCataloguePanelHtml())
+  const catalogueModalHtmlJson = JSON.stringify(buildCatalogueModalHtml())
   return `;(function () {
   'use strict';
   try {
@@ -2699,6 +3276,10 @@ export function buildWqxtUpgradeRuntimeScript(): string {
     var PLAYER_HTML = ${playerHtmlJson};
     var RESOURCE_PANEL_HTML = ${resourcePanelHtmlJson};
     var FOOTER_HTML = ${footerHtmlJson};
+    var CATALOGUE_PANEL_ID = ${JSON.stringify(WQXT_CATALOGUE_PANEL_ID)};
+    var CATALOGUE_MODAL_ID = ${JSON.stringify(WQXT_CATALOGUE_MODAL_ID)};
+    var CATALOGUE_PANEL_HTML = ${cataloguePanelHtmlJson};
+    var CATALOGUE_MODAL_HTML = ${catalogueModalHtmlJson};
 
     // 收藏 / 点赞选择器链：按优先级逐个探测，顶层未命中再扫描整个 document
     var COLLECT_SELECTORS = ['.collect_span.opr_btn', '.collect_span', '.opr_btn.collect', '[class*="collect_span"]', '[class*="btn_collect"]'];
@@ -2990,13 +3571,27 @@ export function buildWqxtUpgradeRuntimeScript(): string {
       return null;
     }
 
+    /** 校验文本是否属于真实字幕内容，坚决过滤播放器控制栏文案与按钮文本 */
+    function isValidSubtitle(text) {
+      if (!text || typeof text !== 'string') return false;
+      var s = text.trim();
+      if (!s || s.length > 500) return false;
+      if (/(?:叠加字幕|标记跳过|跳过片头|倍速|清晰度|选集|全屏|静音|音量|播放|暂停|画质|重播|弹幕|字幕设置|字幕开关)/.test(s)) {
+        return false;
+      }
+      return true;
+    }
+
     /** 按四级顺序提取站点真实字幕文本；全部未命中返回空串（不回退假文案） */
     function findOriginalSubtitleText() {
       // 1. 原生 textTracks 激活 cue（最可靠）
       if (videoEl && videoEl.textTracks && videoEl.textTracks.length > 0) {
         for (var t = 0; t < videoEl.textTracks.length; t++) {
           var cues = videoEl.textTracks[t].activeCues;
-          if (cues && cues.length > 0 && cues[0].text) return String(cues[0].text).trim();
+          if (cues && cues.length > 0 && cues[0].text) {
+            var raw = String(cues[0].text).trim();
+            if (isValidSubtitle(raw)) return raw;
+          }
         }
       }
       // 2. 站点 Vue v-if 槽位：#cmcPlayer_container 与 .main_resize_con 的直接子节点
@@ -3012,9 +3607,9 @@ export function buildWqxtUpgradeRuntimeScript(): string {
           if (kid.id === 'cmcPlayer_container' || kid.id === 'cmc_cmcPlayer_container' || kid.id === PLAYER_ID) continue;
           if (kid.classList && kid.classList.contains('danmu-container')) continue;
           var kidCls = ' ' + (kid.className || '') + ' ';
-          if (/(?:cmc-rightkey|control-content|cmc-expand)/.test(kidCls)) continue;
+          if (/(?:cmc-rightkey|control-content|cmc-expand|cmc-bar|cmc-control)/.test(kidCls)) continue;
           var txt = (kid.textContent || '').trim();
-          if (txt) return txt;
+          if (txt && isValidSubtitle(txt)) return txt;
         }
       }
       // 3. CMCPlayer 内容区内的字幕层（排除视频/水印/重播/缓冲/错误层）
@@ -3025,9 +3620,9 @@ export function buildWqxtUpgradeRuntimeScript(): string {
           var pc = pKids[j];
           if (!pc) continue;
           var cls = ' ' + (pc.className || '') + ' ';
-          if (/(?:cmc-video|cmc-expand|cmc-replay|cmc-buffer|cmc-error)/.test(cls)) continue;
+          if (/(?:cmc-video|cmc-expand|cmc-replay|cmc-buffer|cmc-error|cmc-bar|cmc-control)/.test(cls)) continue;
           var pTxt = (pc.textContent || '').trim();
-          if (pTxt) return pTxt;
+          if (pTxt && isValidSubtitle(pTxt)) return pTxt;
         }
       }
       // 4. 兜底：页面内真实字幕浮层，严格排除右键菜单与控制栏
@@ -3035,9 +3630,9 @@ export function buildWqxtUpgradeRuntimeScript(): string {
       for (var k = 0; k < candidates.length; k++) {
         var node = candidates[k];
         if (playerEl && playerEl.contains(node)) continue;
-        if (node.closest && (node.closest('.cmc-rightkey') || node.closest('.control-content'))) continue;
+        if (node.closest && (node.closest('.cmc-rightkey') || node.closest('.control-content') || node.closest('.cmc-control'))) continue;
         var cTxt = (node.textContent || '').trim();
-        if (cTxt) return cTxt;
+        if (cTxt && isValidSubtitle(cTxt)) return cTxt;
       }
       return '';
     }
@@ -3244,49 +3839,6 @@ export function buildWqxtUpgradeRuntimeScript(): string {
       if (node.classList.contains('is-open')) node.classList.remove('is-open');
       node.setAttribute('aria-hidden', 'true');
       if (qrPollTimer) { clearInterval(qrPollTimer); qrPollTimer = null; }
-    }
-
-    function ensureAiAssistant() {
-      var dock = appendToBody(AI_DOCK_HTML, AI_DOCK_ID);
-      var panel = appendToBody(AI_PANEL_HTML, AI_PANEL_ID);
-      if (dock && !dock.__proferAiBound) {
-        dock.__proferAiBound = true;
-        dock.addEventListener('click', function (event) {
-          event.stopPropagation();
-          var current = byId(AI_PANEL_ID);
-          if (current && current.classList.contains('is-open')) closeAiPanel();
-          else openAiPanel();
-        });
-      }
-      if (panel && !panel.__proferAiBound) {
-        panel.__proferAiBound = true;
-        panel.addEventListener('click', function (event) { event.stopPropagation(); });
-        var min = panel.querySelector('#__profer-ai-min');
-        if (min) min.addEventListener('click', closeAiPanel);
-        var close = panel.querySelector('#__profer-ai-close');
-        if (close) close.addEventListener('click', closeAiPanel);
-      }
-    }
-
-    function openAiPanel() {
-      var panel = byId(AI_PANEL_ID);
-      if (!panel) panel = appendToBody(AI_PANEL_HTML, AI_PANEL_ID);
-      var dock = byId(AI_DOCK_ID);
-      if (panel) {
-        panel.classList.add('is-open');
-        panel.setAttribute('aria-hidden', 'false');
-      }
-      if (dock) dock.classList.add('is-active');
-    }
-
-    function closeAiPanel() {
-      var panel = byId(AI_PANEL_ID);
-      var dock = byId(AI_DOCK_ID);
-      if (panel) {
-        panel.classList.remove('is-open');
-        panel.setAttribute('aria-hidden', 'true');
-      }
-      if (dock) dock.classList.remove('is-active');
     }
 
     // ---------- 播放器 ----------
@@ -3856,6 +4408,7 @@ export function buildWqxtUpgradeRuntimeScript(): string {
         closeQrModal();
         closeAiPanel();
         hideContextMenu();
+        closeCatalogueModal();
       }
       var target = event.target;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable)) return;
@@ -5846,6 +6399,437 @@ export function buildWqxtUpgradeRuntimeScript(): string {
       }
     }
 
+
+    // ---------- 课程目录紧凑卡片与全览大窗口 ----------
+    var catLastSig = '';
+    var catModalLastSig = '';
+    var catAutoScrolledLesson = '';
+    var catModalSearchQuery = '';
+
+    function getCatalogueItems() {
+      // 优先从全局捕获所有 .catalogue-item
+      var nativeItems = document.querySelectorAll('.catalogue-item');
+      if (!nativeItems || nativeItems.length === 0) {
+        var wrapper = document.querySelector('.item-wrapper, .course-catalogue-wrapper, div[class*="catalogue"]');
+        if (wrapper) {
+          nativeItems = wrapper.querySelectorAll('.catalogue-item, div[class*="catalogue-item"]');
+        }
+      }
+      if (!nativeItems || nativeItems.length === 0) {
+        // 尝试从隐藏保险仓（若存在）中查找
+        var vault = document.getElementById('__profer-vault');
+        if (vault) {
+          nativeItems = vault.querySelectorAll('.catalogue-item');
+        }
+      }
+
+      var items = [];
+      var headerTime = '';
+      var host = document.querySelector('div.header-info');
+      if (host) {
+        var timeNode = host.querySelector('.time_span');
+        if (timeNode) headerTime = (timeNode.textContent || '').trim().replace(/\s+/g, '');
+      }
+
+      for (var i = 0; i < nativeItems.length; i++) {
+        var itemEl = nativeItems[i];
+        var imgEl = itemEl.querySelector('img.thumb') || itemEl.querySelector('img');
+        var nameEl = itemEl.querySelector('.catalogue_name') || itemEl.querySelector('p');
+        var name = nameEl ? (nameEl.textContent || '').trim() : ('第 ' + (i + 1) + ' 节');
+        var thumb = imgEl ? (imgEl.getAttribute('src') || '') : '';
+        var normName = name.replace(/\s+/g, '');
+
+        var cls = ' ' + (itemEl.className || '') + ' ';
+        var hasActiveCls = /(?:^|\s)(?:active|is-active|selected|current)(?:\s|$)/.test(cls);
+        var matchesHeader = !!(headerTime && normName && (headerTime.indexOf(normName) !== -1 || normName.indexOf(headerTime) !== -1));
+        var isActive = hasActiveCls || matchesHeader;
+
+        items.push({
+          index: i,
+          name: name,
+          thumb: thumb,
+          isActive: isActive,
+          el: itemEl
+        });
+      }
+
+      var hasActive = items.some(function (it) { return it.isActive; });
+      if (!hasActive && items.length > 0 && headerTime) {
+        for (var j = 0; j < items.length; j++) {
+          var m = items[j].name.match(/\d+/g);
+          if (m && m.length) {
+            var allIn = m.every(function (num) { return headerTime.indexOf(num) !== -1; });
+            if (allIn) { items[j].isActive = true; break; }
+          }
+        }
+      }
+
+      return { items: items, detailNode: null };
+    }
+
+    function upgradeCatalogue() {
+      var contentRight = document.getElementById('contentRight') || document.querySelector('.content-right');
+      var contentInfo = document.querySelector('.living-page-content .content-info');
+      if (!contentInfo) return;
+
+      var panel = document.getElementById(CATALOGUE_PANEL_ID);
+      if (!panel) {
+        var wrap = document.createElement('div');
+        wrap.innerHTML = CATALOGUE_PANEL_HTML.trim();
+        panel = wrap.firstElementChild;
+        if (!panel) return;
+        if (contentRight) {
+          var tabSwitch = contentRight.querySelector('.portalroom-tab-switch');
+          if (tabSwitch) {
+            contentRight.insertBefore(panel, tabSwitch);
+          } else {
+            contentRight.appendChild(panel);
+          }
+        } else {
+          contentInfo.appendChild(panel);
+        }
+        bindCataloguePanel(panel);
+      }
+
+      ensureCatalogueModal();
+      syncCatalogueData(panel);
+    }
+
+    function syncCatalogueData(panel) {
+      var data = getCatalogueItems();
+      var items = data.items;
+      var detailNode = data.detailNode;
+
+      if (!items || items.length === 0) {
+        setShown(panel, false);
+        return;
+      }
+      setShown(panel, true);
+
+      var countEl = panel.querySelector('#__profer-cat-count');
+      setText(countEl, '共 ' + items.length + ' 节');
+
+      var activeItem = items.find(function (it) { return it.isActive; }) || null;
+      var currentEl = panel.querySelector('#__profer-cat-current');
+      if (currentEl) {
+        if (activeItem) {
+          setText(currentEl, '当前：' + activeItem.name);
+          setShown(currentEl, true);
+        } else {
+          setShown(currentEl, false);
+        }
+      }
+
+      var detailBtn = panel.querySelector('#__profer-cat-btn-detail');
+      if (detailBtn) {
+        setShown(detailBtn, !!detailNode);
+      }
+
+      var activeKey = activeItem ? (activeItem.index + ':' + activeItem.name) : '-1';
+      var sig = items.length + '|' + items.map(function (it) { return it.name + ':' + it.thumb + ':' + (it.isActive ? 1 : 0); }).join(';');
+
+      var track = panel.querySelector('#__profer-cat-scroll-track');
+      if (track && sig !== catLastSig) {
+        catLastSig = sig;
+        renderCatalogueTrack(track, items);
+        updateTrackNavButtons(panel, track);
+      }
+
+      if (track && activeItem && catAutoScrolledLesson !== activeKey) {
+        catAutoScrolledLesson = activeKey;
+        setTimeout(function () {
+          var activeCard = track.querySelector('.profer-cat-card.is-active');
+          if (activeCard) {
+            var cardLeft = activeCard.offsetLeft;
+            var trackWidth = track.clientWidth;
+            track.scrollTo({ left: Math.max(0, cardLeft - trackWidth / 2 + 59), behavior: 'smooth' });
+          }
+        }, 80);
+      }
+
+      syncCatalogueModal(items, detailNode, activeItem);
+    }
+
+    function renderCatalogueTrack(track, items) {
+      var html = '';
+      for (var i = 0; i < items.length; i++) {
+        var it = items[i];
+        var activeCls = it.isActive ? ' is-active' : '';
+        html += '<div class="profer-cat-card' + activeCls + '" data-index="' + it.index + '" title="' + escapeHtml(it.name) + '">';
+        html += '  <div class="profer-cat-thumb-wrap">';
+        if (it.thumb) {
+          html += '    <img class="profer-cat-thumb" src="' + escapeHtml(it.thumb) + '" alt="' + escapeHtml(it.name) + '" loading="lazy" />';
+        }
+        html += '    <div class="profer-cat-fallback"' + (it.thumb ? '' : ' style="display:flex !important;"') + '>';
+        html += '      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>';
+        html += '    </div>';
+        if (it.isActive) {
+          html += '    <span class="profer-cat-badge-playing">正在播放</span>';
+        }
+        html += '  </div>';
+        html += '  <p class="profer-cat-name">' + escapeHtml(it.name) + '</p>';
+        html += '</div>';
+      }
+      track.innerHTML = html;
+      var imgs = track.querySelectorAll('img.profer-cat-thumb');
+      for (var ci = 0; ci < imgs.length; ci++) {
+        imgs[ci].addEventListener('error', function () {
+          this.style.display = 'none';
+          if (this.nextElementSibling) this.nextElementSibling.style.display = 'flex';
+        });
+      }
+    }
+
+    function updateTrackNavButtons(panel, track) {
+      var leftBtn = panel.querySelector('#__profer-cat-scroll-left');
+      var rightBtn = panel.querySelector('#__profer-cat-scroll-right');
+      if (!track || !leftBtn || !rightBtn) return;
+      var canScroll = track.scrollWidth > track.clientWidth + 4;
+      if (!canScroll) {
+        setShown(leftBtn, false);
+        setShown(rightBtn, false);
+        return;
+      }
+      setShown(leftBtn, track.scrollLeft > 10);
+      setShown(rightBtn, track.scrollLeft < track.scrollWidth - track.clientWidth - 10);
+    }
+
+    function bindCataloguePanel(panel) {
+      if (panel.__proferBound) return;
+      panel.__proferBound = true;
+
+      var track = panel.querySelector('#__profer-cat-scroll-track');
+      var leftBtn = panel.querySelector('#__profer-cat-scroll-left');
+      var rightBtn = panel.querySelector('#__profer-cat-scroll-right');
+
+      if (leftBtn && track) {
+        leftBtn.addEventListener('click', function () {
+          track.scrollBy({ left: -260, behavior: 'smooth' });
+        });
+      }
+      if (rightBtn && track) {
+        rightBtn.addEventListener('click', function () {
+          track.scrollBy({ left: 260, behavior: 'smooth' });
+        });
+      }
+      if (track) {
+        track.addEventListener('scroll', function () {
+          updateTrackNavButtons(panel, track);
+        }, { passive: true });
+
+        track.addEventListener('click', function (e) {
+          var card = e.target.closest('.profer-cat-card');
+          if (!card) return;
+          var idx = parseInt(card.getAttribute('data-index'), 10);
+          if (!isNaN(idx)) {
+            var data = getCatalogueItems();
+            if (data.items[idx] && data.items[idx].el) {
+              try { data.items[idx].el.click(); } catch (err) {}
+            }
+          }
+        });
+      }
+
+      // 课程详情入口已移除
+
+      var expandBtn = panel.querySelector('#__profer-cat-btn-expand');
+      if (expandBtn) {
+        expandBtn.addEventListener('click', function () {
+          openCatalogueModal();
+        });
+      }
+    }
+
+    function ensureCatalogueModal() {
+      var modal = document.getElementById(CATALOGUE_MODAL_ID);
+      if (!modal) {
+        var wrap = document.createElement('div');
+        wrap.innerHTML = CATALOGUE_MODAL_HTML.trim();
+        modal = wrap.firstElementChild;
+        if (!modal) return null;
+        document.body.appendChild(modal);
+        bindCatalogueModal(modal);
+      }
+      return modal;
+    }
+
+    function openCatalogueModal() {
+      var modal = ensureCatalogueModal();
+      if (!modal) return;
+      modal.classList.add('is-open');
+      catModalLastSig = '';
+      var data = getCatalogueItems();
+      var activeItem = data.items.find(function(it){ return it.isActive; }) || null;
+      syncCatalogueModal(data.items, data.detailNode, activeItem);
+      var searchInput = modal.querySelector('#__profer-cat-modal-search-input');
+      if (searchInput) {
+        searchInput.value = '';
+        catModalSearchQuery = '';
+        setTimeout(function () { searchInput.focus(); }, 50);
+      }
+      setTimeout(function () {
+        var grid = modal.querySelector('#__profer-cat-modal-grid');
+        var activeCard = grid ? grid.querySelector('.profer-cat-modal-card.is-active') : null;
+        if (activeCard && grid) {
+          activeCard.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
+      }, 100);
+    }
+
+    function closeCatalogueModal() {
+      var modal = document.getElementById(CATALOGUE_MODAL_ID);
+      if (modal) {
+        modal.classList.remove('is-open');
+      }
+    }
+
+    function bindCatalogueModal(modal) {
+      if (modal.__proferBound) return;
+      modal.__proferBound = true;
+
+      var mask = modal.querySelector('#__profer-cat-modal-mask');
+      if (mask) {
+        mask.addEventListener('click', function () { closeCatalogueModal(); });
+      }
+
+      var closeBtn = modal.querySelector('#__profer-cat-modal-close-btn');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', function () { closeCatalogueModal(); });
+      }
+
+      // 课程详情入口已移除
+
+      var searchInput = modal.querySelector('#__profer-cat-modal-search-input');
+      var clearBtn = modal.querySelector('#__profer-cat-modal-search-clear');
+      if (searchInput) {
+        searchInput.addEventListener('input', function () {
+          catModalSearchQuery = (searchInput.value || '').trim();
+          if (clearBtn) setShown(clearBtn, !!catModalSearchQuery);
+          var data = getCatalogueItems();
+          renderCatalogueModalGrid(modal, data.items);
+        });
+      }
+      if (clearBtn && searchInput) {
+        clearBtn.addEventListener('click', function () {
+          searchInput.value = '';
+          catModalSearchQuery = '';
+          setShown(clearBtn, false);
+          searchInput.focus();
+          var data = getCatalogueItems();
+          renderCatalogueModalGrid(modal, data.items);
+        });
+      }
+
+      var grid = modal.querySelector('#__profer-cat-modal-grid');
+      if (grid) {
+        grid.addEventListener('click', function (e) {
+          var card = e.target.closest('.profer-cat-modal-card');
+          if (!card) return;
+          var idx = parseInt(card.getAttribute('data-index'), 10);
+          if (!isNaN(idx)) {
+            var data = getCatalogueItems();
+            if (data.items[idx] && data.items[idx].el) {
+              try { data.items[idx].el.click(); } catch (err) {}
+            }
+            closeCatalogueModal();
+          }
+        });
+      }
+    }
+
+    function syncCatalogueModal(items, detailNode, activeItem) {
+      var modal = document.getElementById(CATALOGUE_MODAL_ID);
+      if (!modal || !modal.classList.contains('is-open')) return;
+
+      var countEl = modal.querySelector('#__profer-cat-modal-count');
+      setText(countEl, '共 ' + items.length + ' 节');
+
+      var currentEl = modal.querySelector('#__profer-cat-modal-current');
+      if (currentEl) {
+        if (activeItem) {
+          setText(currentEl, '正在播放：' + activeItem.name);
+          setShown(currentEl, true);
+        } else {
+          setShown(currentEl, false);
+        }
+      }
+
+      var detailBtn = modal.querySelector('#__profer-cat-modal-detail-btn');
+      if (detailBtn) {
+        setShown(detailBtn, !!detailNode);
+      }
+
+      renderCatalogueModalGrid(modal, items);
+    }
+
+    function renderCatalogueModalGrid(modal, items) {
+      var grid = modal.querySelector('#__profer-cat-modal-grid');
+      var emptyEl = modal.querySelector('#__profer-cat-modal-empty');
+      if (!grid) return;
+
+      var query = catModalSearchQuery.toLowerCase();
+      var filtered = items.filter(function (it) {
+        if (!query) return true;
+        return it.name.toLowerCase().indexOf(query) !== -1;
+      });
+
+      // 幂等渲染：内容签名不变时绝不重写 innerHTML。
+      // 页面级 MutationObserver 会在任何 childList 变动后重新触发 sync()，
+      // 若无条件重写网格会形成「重写 → 观察 → 重写」的微任务死循环，导致整页冻结。
+      var sig = query + '|' + filtered.map(function (it) {
+        return it.index + ':' + it.name + ':' + it.thumb + ':' + (it.isActive ? 1 : 0);
+      }).join(';');
+      if (sig === catModalLastSig) return;
+      catModalLastSig = sig;
+
+      if (filtered.length === 0) {
+        grid.innerHTML = '';
+        if (emptyEl) setShown(emptyEl, true);
+        return;
+      }
+
+      if (emptyEl) setShown(emptyEl, false);
+      var html = '<div class="profer-cat-modal-grid">';
+      for (var i = 0; i < filtered.length; i++) {
+        var it = filtered[i];
+        var activeCls = it.isActive ? ' is-active' : '';
+        html += '<div class="profer-cat-modal-card' + activeCls + '" data-index="' + it.index + '" title="' + escapeHtml(it.name) + '">';
+        html += '  <div class="profer-cat-thumb-wrap">';
+        if (it.thumb) {
+          html += '    <img class="profer-cat-thumb" src="' + escapeHtml(it.thumb) + '" alt="' + escapeHtml(it.name) + '" loading="lazy" />';
+        }
+        html += '    <div class="profer-cat-fallback"' + (it.thumb ? '' : ' style="display:flex !important;"') + '>';
+        html += '      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>';
+        html += '    </div>';
+        if (it.isActive) {
+          html += '    <span class="profer-cat-badge-playing">正在播放</span>';
+        }
+        html += '  </div>';
+        html += '  <p class="profer-cat-name">' + escapeHtml(it.name) + '</p>';
+        html += '</div>';
+      }
+      html += '</div>';
+      grid.innerHTML = html;
+      var gImgs = grid.querySelectorAll('img.profer-cat-thumb');
+      for (var gi = 0; gi < gImgs.length; gi++) {
+        gImgs[gi].addEventListener('error', function () {
+          this.style.display = 'none';
+          if (this.nextElementSibling) this.nextElementSibling.style.display = 'flex';
+        });
+      }
+    }
+
+    function destroyCatalogue() {
+      var modal = document.getElementById(CATALOGUE_MODAL_ID);
+      if (modal && modal.parentNode) modal.parentNode.removeChild(modal);
+      var panel = document.getElementById(CATALOGUE_PANEL_ID);
+      if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
+      catLastSig = '';
+      catModalLastSig = '';
+      catAutoScrolledLesson = '';
+      catModalSearchQuery = '';
+    }
+
     function upgradeResourcePanel() {
       var contentInfo = document.querySelector('.living-page-content .content-info');
       if (!contentInfo) return false;
@@ -5969,12 +6953,16 @@ export function buildWqxtUpgradeRuntimeScript(): string {
       if (playerNode && playerNode.parentNode) playerNode.parentNode.removeChild(playerNode);
       var headerNode = byId(HEADER_ID);
       if (headerNode && headerNode.parentNode) headerNode.parentNode.removeChild(headerNode);
+      destroyCatalogue();
       var panelNode = byId(RESOURCE_PANEL_ID);
       if (panelNode && panelNode.parentNode) panelNode.parentNode.removeChild(panelNode);
       var footerNode = byId(FOOTER_ID);
       if (footerNode && footerNode.parentNode) footerNode.parentNode.removeChild(footerNode);
       var qrModalNode = byId(QR_MODAL_ID);
       if (qrModalNode && qrModalNode.parentNode) qrModalNode.parentNode.removeChild(qrModalNode);
+      if (window.__proferWqxtAiPanel && typeof window.__proferWqxtAiPanel.destroy === 'function') {
+        try { window.__proferWqxtAiPanel.destroy(); } catch (e) {}
+      }
       var aiDockNode = byId(AI_DOCK_ID);
       if (aiDockNode && aiDockNode.parentNode) aiDockNode.parentNode.removeChild(aiDockNode);
       var aiPanelNode = byId(AI_PANEL_ID);
@@ -5990,6 +6978,7 @@ export function buildWqxtUpgradeRuntimeScript(): string {
       removeStyle();
     }
 
+` + buildWqxtAiPanelRuntimeScript() + `
     function sync() {
       if (!isLivingRoom()) { destroy(); return; }
       ensureStyle();
@@ -6000,6 +6989,7 @@ export function buildWqxtUpgradeRuntimeScript(): string {
       upgradePlayer();
       ensurePptSync();
       abortVideoIfLessonChanged();
+      upgradeCatalogue();
       upgradeResourcePanel();
       upgradeFooter();
       ensureKeydown();

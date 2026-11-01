@@ -97,6 +97,23 @@ export function isYanhuSsoAppUrl(rawUrl: string): boolean {
   return /\/xsfw\/sys\//i.test(rawUrl) || /\/jsxsd\//i.test(rawUrl)
 }
 
+/**
+ * 是否为校统一身份认证（CAS）登录页地址。
+ *
+ * CAS 登录页只是登录过程中的临时中转页，恢复标签时若直接重载，要么落在错误页
+ * （例如 service 未注册时的「未认证授权的服务」），要么因票据失效被再次踢回登录。
+ * 故恢复这类标签时统一回落到站内默认入口。
+ */
+export function isCdutCasLoginUrl(rawUrl: string): boolean {
+  if (!rawUrl) return false
+  try {
+    const url = new URL(rawUrl)
+    return url.hostname === 'cas.paas.cdut.edu.cn' && url.pathname.toLowerCase().includes('/cas/login')
+  } catch {
+    return false
+  }
+}
+
 /** 后台标签休眠阈值：后台标签总数超过该值时，闲置超时的后台标签释放底层 WebContents */
 export const YANHU_DORMANT_MAX_BACKGROUND = 10
 /** 后台标签闲置多长时间后可被回收（30 分钟） */
@@ -153,8 +170,8 @@ export const YANHU_DARK_SCROLLBAR_CSS = `
   html { color-scheme: dark; }
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(161, 161, 170, .42); border-radius: 999px; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(161, 161, 170, .62); }
+  ::-webkit-scrollbar-thumb { background: #D7CBD2; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #C2B0BA; }
 `
 
 /** 主题兜底：网页 `prefers-color-scheme` 仿真失败时注入的细滚动条样式（浅色） */
@@ -162,8 +179,8 @@ export const YANHU_LIGHT_SCROLLBAR_CSS = `
   html { color-scheme: light; }
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(113, 113, 122, .42); border-radius: 999px; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(113, 113, 122, .62); }
+  ::-webkit-scrollbar-thumb { background: #D7CBD2; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #C2B0BA; }
 `
 
 /** 深色模式下底层 WebContentsView 底色（与 CDUT 专区背景一致的深邃色，防白闪） */

@@ -38,6 +38,7 @@ import {
   type YanhuViewLayout,
 } from '@profer/shared'
 import { CDUT_AUTH_CERT_SESSION_ID, CDUT_AUTH_PARTITION } from '../cdut-auth-manager'
+import { cdutAccountManager } from '../cdut-account-manager'
 import {
   allowDomainTemporarily,
   buildSecurityInterstitialHtml,
@@ -53,6 +54,7 @@ import {
   YANHU_HOME_URL,
   YANHU_WINDOW_OPEN_COALESCE_MS,
   hasOneTimeTicket,
+  isCdutCasLoginUrl,
   isYanhuSsoAppUrl,
   resolveYanhuViewBackground,
   stripOneTimeTicket,
@@ -64,23 +66,13 @@ import { yanhuDevToolsHub } from './yanhu-devtools-hub'
 import { syncThemeToWebContents, yanhuThemeService } from './yanhu-theme-service'
 import { yanhuDiagnosticConsole } from './yanhu-diagnostic-console'
 import { stripStaleRuiShuCookies } from './yanhu-cookie-utils'
-import { yanhuDomDistillationEngine, type YanhuRawElement } from './yanhu-dom-distillation'
+
 import { logYanhuEvent } from './yanhu-event-log'
+import { wqxtAiHarness } from './wqxt-ai-harness'
 import {
   buildWqxtLivingRoomCleanerScript,
   isWqxtWatermarkRequestUrl,
 } from './wqxt-livingroom-cleaner'
-import {
-  buildCrossFrameDrainScript,
-  normalizeCrossFrameDrain,
-  yanhuStabilizationWatcher,
-  type CrossFrameDrainOptions,
-  type CrossFrameDrainResult,
-  type QuiescenceOptions,
-  type QuiescenceResult,
-  type StabilizationProbe,
-} from './yanhu-stabilization'
-
 /** 标签运行时记录 */
 interface YanhuTabRecord {
   id: string
@@ -354,6 +346,8 @@ export class YanhuExpressManager {
     ipcMain.on('yanhu-download-action', (_event, payload?: { action?: string; clientId?: string; filename?: string }) => {
       this.handleDownloadAction(payload)
     })
+    // AI 问渠助手：消息 / 中断 / 配置 / 历史（集中注册，幂等）
+    wqxtAiHarness.attach()
   }
 
   /** 主进程 -> 渲染进程广播 */
@@ -644,11 +638,19 @@ export class YanhuExpressManager {
 
     const stored = this.tabsStore.load()
     for (const item of stored.tabs) {
-      // 恢复时把哨兵拦截页复位为当前作用域的默认首页，避免加载无效协议
-      const safeUrl = blockedTargetOf(item.url) ? this.homeUrl : item.url
+      // 恢复时把哨兵拦截页复位为当前作用域的默认首页，避免加载无效协议；
+      // CAS 登录中转页同样回落首页，避免重启后直接落到「未认证授权的服务」错误页
+      const resetToHome = Boolean(blockedTargetOf(item.url)) || isCdutCasLoginUrl(item.url)
+      const safeUrl = resetToHome ? this.homeUrl : item.url
       const record: YanhuTabRecord = {
         id: item.id,
-        item: { ...item, url: safeUrl, isDormant: true, loading: false },
+        item: {
+          ...item,
+          url: safeUrl,
+          title: resetToHome ? this.homeTitle : item.title,
+          isDormant: true,
+          loading: false,
+        },
         view: null,
         blockedTarget: null,
         blockedPreviousUrl: null,
@@ -886,8 +888,9 @@ export class YanhuExpressManager {
     if (!tab.view) return
     const view = tab.view
     tab.view = null
+    // 标签销毁前中断该视口所有在途 AI 流，避免回调已销毁 WebContents
+    wqxtAiHarness.abortBySender(view.webContents.id)
     yanhuDevToolsHub.release(tabId)
-    yanhuDomDistillationEngine.release(tabId)
     yanhuThemeService.unregisterView(view)
     try {
       this.hostView?.removeChildView(view)
@@ -907,8 +910,11 @@ export class YanhuExpressManager {
     const wc = view.webContents
 
     // 主框架导航起点：记录本次真实请求目标（data: 等内部页面不覆盖）
-    wc.on('did-start-navigation', (_event, url, _isInPlace, isMainFrame) => {
+    wc.on('did-start-navigation', (_event, url, isInPlace, isMainFrame) => {
       if (isMainFrame && isWebUrl(url)) tab.lastRequestedUrl = url
+      // 跨文档导航（F5 / Ctrl+R / 跳转新课）会销毁旧页面监听但 WebContents 仍存活，
+      // 必须立刻中断其所有在途 SSE，避免向新页面投递过时 STREAM_CHUNK
+      if (isMainFrame && !isInPlace) wqxtAiHarness.abortBySender(wc.id)
     })
 
     // 主框架导航：统一走安全网关（证书插页哨兵优先拦截）
@@ -983,7 +989,6 @@ export class YanhuExpressManager {
       tab.item.loading = true
       tab.item.error = null // 开始加载时重置错误状态
       // 页面开始加载：标记无视感知 BID 缓存失效，下次读取时全量重建
-      yanhuDomDistillationEngine.markDirty(tab.id)
       this.send(YANHU_EXPRESS_IPC_CHANNELS.ON_LOADING_CHANGED, { tabId: tab.id, loading: true })
       this.emitTabs()
     })
@@ -1000,8 +1005,14 @@ export class YanhuExpressManager {
       // 记录最近一次真实落地的页面：证书失败后 Chromium 可能把 URL 改成 chrome-error://，
       // 只有这里留存的地址才能作为「返回安全页面」的可信落点
       const committedUrl = wc.getURL()
-      if (isWebUrl(committedUrl)) tab.lastCommittedUrl = committedUrl
-      yanhuDomDistillationEngine.markDirty(tab.id)
+      if (isWebUrl(committedUrl)) {
+        tab.lastCommittedUrl = committedUrl
+        if (committedUrl.toLowerCase().includes('cas.paas.cdut.edu.cn/cas/login')) {
+          cdutAccountManager.clearPendingSubmit(wc.id)
+        } else {
+          cdutAccountManager.commitPendingSubmit(wc.id)
+        }
+      }
       this.recomputeNavigation(tab)
       logYanhuEvent('did-navigate', { tabId: tab.id, url: tab.item.url })
       this.sanitizeOneTimeTicket(tab)
@@ -1012,7 +1023,10 @@ export class YanhuExpressManager {
     })
 
     wc.on('did-navigate-in-page', () => {
-      yanhuDomDistillationEngine.markDirty(tab.id)
+      const committedUrl = wc.getURL()
+      if (isWebUrl(committedUrl) && !committedUrl.toLowerCase().includes('cas.paas.cdut.edu.cn/cas/login')) {
+        cdutAccountManager.commitPendingSubmit(wc.id)
+      }
       this.recomputeNavigation(tab)
       logYanhuEvent('did-navigate-in-page', { tabId: tab.id, url: tab.item.url })
       this.sanitizeOneTimeTicket(tab)
@@ -1035,6 +1049,7 @@ export class YanhuExpressManager {
     })
 
     wc.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+      cdutAccountManager.clearPendingSubmit(wc.id)
       // 忽略非主框架与用户主动取消（-3 ERR_ABORTED）
       if (!isMainFrame || errorCode === -3) return
 
@@ -1061,7 +1076,6 @@ export class YanhuExpressManager {
         tab.view = null
         tab.item.isDormant = true
         yanhuDevToolsHub.release(tab.id)
-        yanhuDomDistillationEngine.release(tab.id)
         yanhuThemeService.unregisterView(view)
       }
     })
@@ -1692,7 +1706,7 @@ export class YanhuExpressManager {
   }
 
   public reorderTabs(orderedTabIds: string[]): YanhuTabsState {
-    const known = orderedTabIds.filter((id) => this.tabs.has(id))
+    const known = Array.from(new Set(orderedTabIds)).filter((id) => this.tabs.has(id))
     // 补齐未在有序列表中出现的标签，保证不丢标签
     for (const id of this.tabOrder) if (!known.includes(id)) known.push(id)
     this.tabOrder = known
@@ -1904,7 +1918,8 @@ export class YanhuExpressManager {
   public async openExternal(url: string): Promise<void> {
     try {
       const parsed = new URL(url)
-      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      const blockedProtocols = ['file:', 'javascript:', 'data:', 'vbscript:']
+      if (!blockedProtocols.includes(parsed.protocol.toLowerCase())) {
         await shell.openExternal(url)
       }
     } catch (err) {
@@ -2231,418 +2246,6 @@ export class YanhuExpressManager {
     const tab = this.resolveTab(tabId)
     if (!tab?.view || tab.view.webContents.isDestroyed()) return null
     return tab.view.webContents
-  }
-
-  /**
-   * 捕获目标标签的原生视口截图（视觉截图辅助感知的底层支撑）。
-   *
-   * 直接使用 Electron `webContents.capturePage()` 获取视口物理像素图，返回 JPEG Base64
-   * （质量 72，兼顾清晰度与上下文体积），并给出 DIP / 物理像素双尺寸，
-   * 供双平面平行坐标锚定引擎（`yanhu-visual-anchor`）换算视觉归一化坐标。
-   */
-  public async captureViewport(tabId?: string): Promise<{
-    dataUrl: string
-    dipWidth: number
-    dipHeight: number
-    pixelWidth: number
-    pixelHeight: number
-  } | null> {
-    const tab = this.resolveTab(tabId)
-    if (!tab?.view || tab.view.webContents.isDestroyed()) return null
-    const wc = tab.view.webContents
-    let image: Awaited<ReturnType<WebContents['capturePage']>>
-    try {
-      image = await wc.capturePage()
-    } catch {
-      return null
-    }
-    if (image.isEmpty()) return null
-    const size = image.getSize()
-    let bounds = { width: size.width, height: size.height }
-    try {
-      const b = tab.view.getBounds()
-      if (b.width > 0 && b.height > 0) bounds = { width: b.width, height: b.height }
-    } catch {
-      /* 退回物理像素尺寸 */
-    }
-    const dataUrl = `data:image/jpeg;base64,${image.toJPEG(72).toString('base64')}`
-    return {
-      dataUrl,
-      dipWidth: Math.max(1, Math.round(bounds.width)),
-      dipHeight: Math.max(1, Math.round(bounds.height)),
-      pixelWidth: size.width,
-      pixelHeight: size.height,
-    }
-  }
-
-  /**
-   * 在页面主上下文中求值表达式（依赖 CDP Runtime.evaluate，附带 CDP 附着）。
-   * 单次表达式上限 64,000 字符由 DevToolsHub 把关。
-   */
-  public async evalInPage(tabId: string | undefined, expression: string): Promise<unknown> {
-    const tab = this.resolveTab(tabId)
-    if (!tab) throw new Error('目标标签不存在')
-    await this.ensureCdpAttached(tab)
-    return yanhuDevToolsHub.executeScript(tab.id, expression)
-  }
-
-  /**
-   * 跨域（OOPIF）子框架 DOM 采集：现代内嵌第三方表单（支付 / 问卷 / 统一认证）常以跨域 iframe 呈现，
-   * 页面脚本访问其 `contentWindow.document` 会抛 SecurityError 而彻底失明。此处改走 CDP：
-   *   1. `Page.getFrameTree` 枚举全部子框架；
-   *   2. 对**安全源不同**的跨域框架以 `Page.createIsolatedWorld` 建立独立执行上下文，运行同一采集脚本；
-   *   3. 逐帧经 `DOM.getFrameOwner` + `DOM.getBoxModel` 自内向外累加各级 iframe 偏移，
-   *      把子框架局部坐标投影为根视口绝对坐标，使硬件级点击可直接命中。
-   *
-   * 仅采集与主框架安全源不同的子框架，避免与页面脚本的同源采集重复。
-   */
-  public async collectCrossOriginFrameElements(
-    tabId: string | undefined,
-    collectorScript: string,
-  ): Promise<{ elements: YanhuRawElement[]; dataTables: string[] }> {
-    const empty = { elements: [] as YanhuRawElement[], dataTables: [] as string[] }
-    const tab = this.resolveTab(tabId)
-    if (!tab) return empty
-    await this.ensureCdpAttached(tab)
-
-    let frames: CrossFrameInfo[] = []
-    try {
-      const tree = await yanhuDevToolsHub.send(tab.id, 'Page.getFrameTree')
-      frames = flattenFrameTree(tree.frameTree)
-    } catch {
-      return empty
-    }
-    if (frames.length === 0) return empty
-
-    const top = frames.find((frame) => !frame.parentId)
-    const topOrigin = safeOrigin(top?.securityOrigin || top?.url || '')
-    const elements: YanhuRawElement[] = []
-    const dataTables: string[] = []
-    let ordinal = 0
-
-    for (const frame of frames) {
-      if (!frame.parentId) continue
-      const origin = safeOrigin(frame.securityOrigin || frame.url || '')
-      // 仅处理跨域框架：同源框架已由页面脚本自行穿透，重复采集会造成 BID 冗余
-      if (!origin || origin === topOrigin) continue
-      ordinal += 1
-      try {
-        const offset = await this.resolveFrameOffset(tab.id, frame, frames)
-        const world = await yanhuDevToolsHub.send(tab.id, 'Page.createIsolatedWorld', {
-          frameId: frame.frameId,
-          worldName: 'yanhu-oopif',
-          grantUniveralAccess: false,
-        })
-        const contextId = typeof world.executionContextId === 'number' ? world.executionContextId : null
-        if (contextId === null) continue
-        const evaluated = await yanhuDevToolsHub.send(tab.id, 'Runtime.evaluate', {
-          expression: collectorScript,
-          contextId,
-          returnByValue: true,
-          awaitPromise: true,
-        })
-        const payload = (evaluated.result as { value?: unknown } | undefined)?.value as
-          | { elements?: unknown; dataTables?: unknown }
-          | null
-        if (!payload || !Array.isArray(payload.elements)) continue
-        const framePath = `xframe:${ordinal}`
-        for (const raw of payload.elements) {
-          const el = raw as YanhuRawElement
-          if (!el || typeof el !== 'object') continue
-          const bounds = el.bounds ?? { x: 0, y: 0, width: 0, height: 0 }
-          elements.push({
-            ...el,
-            framePath,
-            bounds: {
-              x: Math.round(bounds.x + offset.x),
-              y: Math.round(bounds.y + offset.y),
-              width: Math.round(bounds.width),
-              height: Math.round(bounds.height),
-            },
-          })
-        }
-        if (Array.isArray(payload.dataTables)) {
-          for (const table of payload.dataTables) if (typeof table === 'string') dataTables.push(table)
-        }
-      } catch {
-        // 单个框架采集失败不影响其余框架
-      }
-    }
-    return { elements, dataTables }
-  }
-
-  /** 逐级累加框架在其父视口中的偏移，投影为根视口绝对坐标（跨域穿透兜底） */
-  private async resolveFrameOffset(
-    tabId: string,
-    frame: CrossFrameInfo,
-    frames: readonly CrossFrameInfo[],
-  ): Promise<{ x: number; y: number }> {
-    let x = 0
-    let y = 0
-    let current: CrossFrameInfo | undefined = frame
-    let guard = 0
-    while (current && current.parentId && guard < 16) {
-      const parentFrameId: string = current.parentId
-      try {
-        const owner = await yanhuDevToolsHub.send(tabId, 'DOM.getFrameOwner', { frameId: current.frameId })
-        const backendNodeId = typeof owner.backendNodeId === 'number' ? owner.backendNodeId : null
-        if (backendNodeId !== null) {
-          const box = await yanhuDevToolsHub.send(tabId, 'DOM.getBoxModel', { backendNodeId })
-          const content = (box.model as { content?: unknown } | undefined)?.content
-          if (Array.isArray(content) && content.length >= 2) {
-            x += Number(content[0]) || 0
-            y += Number(content[1]) || 0
-          }
-        }
-      } catch {
-        // 单级偏移解析失败时停止累加，保留已得偏移
-        break
-      }
-      current = frames.find((candidate) => candidate.frameId === parentFrameId)
-      guard += 1
-    }
-    return { x, y }
-  }
-
-  /**
-   * 派发真实硬件级物理点击（High-Fidelity Click Pipeline）。
-   *
-   * 补齐 `mouseMoved` 预热（触发 :hover 与动态事件绑定）、真实按键微延迟脉冲（拒绝 0ms
-   * 机器瞬发被风控拦截）与释放，使 `event.isTrusted === true`，可在内核级触发原生导航 /
-   * 表单默认行为。当 CDP 交互不可用时抛出异常，由工具层回退至原生 `element.click()`。
-   */
-  public async dispatchHumanClick(
-    tabId: string | undefined,
-    x: number,
-    y: number,
-    options: { doubleClick?: boolean; dwellMs?: number } = {},
-  ): Promise<void> {
-    const tab = this.resolveTab(tabId)
-    if (!tab) throw new Error('目标标签不存在')
-    await this.ensureCdpAttached(tab)
-
-    const targetX = Math.round(x)
-    const targetY = Math.round(y)
-    const clickCount = options.doubleClick ? 2 : 1
-    const dwellMs = Math.max(30, Math.min(options.dwellMs ?? 40, 100))
-
-    // 1. 预热鼠标滑过 (mouseMoved)：触发 :hover 伪类与动态事件监听挂载
-    await yanhuDevToolsHub.send(tab.id, 'Input.dispatchMouseEvent', {
-      type: 'mouseMoved',
-      x: targetX,
-      y: targetY,
-    })
-    await new Promise((resolve) => setTimeout(resolve, dwellMs))
-
-    const press = async (): Promise<void> => {
-      // 2. 物理按下 (mousePressed)
-      await yanhuDevToolsHub.send(tab.id, 'Input.dispatchMouseEvent', {
-        type: 'mousePressed',
-        x: targetX,
-        y: targetY,
-        button: 'left',
-        clickCount,
-      })
-      // 3. 物理按压接触驻留（人类按键自然驻留，杜绝 0ms 瞬发）
-      await new Promise((resolve) => setTimeout(resolve, 50))
-      // 4. 物理抬起 (mouseReleased)
-      await yanhuDevToolsHub.send(tab.id, 'Input.dispatchMouseEvent', {
-        type: 'mouseReleased',
-        x: targetX,
-        y: targetY,
-        button: 'left',
-        clickCount,
-      })
-    }
-
-    await press()
-    if (options.doubleClick) {
-      await new Promise((resolve) => setTimeout(resolve, 80))
-      await press()
-    }
-  }
-
-  /**
-   * 派发真实文本流输入（High-Fidelity Fill & PressEnter Pipeline）。
-   *
-   * ① CDP 物理点击聚焦 → ② 可选全选 + Backspace 清空 → ③ `Input.insertText` 驱动
-   * Chromium 原生文本输入管道 → ④ 可选回车：默认派发**合成**回车（仅触发页面 JS 监听，
-   * 不触发原生表单提交）；仅 `allowFormSubmit=true` 时才下发原生受信任回车真正提交表单。
-   */
-  public async dispatchHumanTextInput(
-    tabId: string | undefined,
-    x: number,
-    y: number,
-    text: string,
-    options: { clearFirst?: boolean; pressEnter?: boolean; allowFormSubmit?: boolean } = {},
-  ): Promise<void> {
-    const tab = this.resolveTab(tabId)
-    if (!tab) throw new Error('目标标签不存在')
-    await this.ensureCdpAttached(tab)
-
-    // 1. 物理点击聚焦：触发原生 focus 事件与光标闪烁
-    await this.dispatchHumanClick(tabId, x, y)
-    await new Promise((resolve) => setTimeout(resolve, 50))
-
-    // 2. 清空输入框内容（全选 + Backspace 真实键码）
-    if (options.clearFirst) {
-      const isMac = process.platform === 'darwin'
-      await yanhuDevToolsHub.send(tab.id, 'Input.dispatchKeyEvent', {
-        type: 'rawKeyDown',
-        modifiers: isMac ? 4 : 2, // Cmd (Mac) 或 Ctrl (Win)
-        windowsVirtualKeyCode: 65, // 'A'
-        key: 'a',
-        code: 'KeyA',
-      })
-      await yanhuDevToolsHub.send(tab.id, 'Input.dispatchKeyEvent', {
-        type: 'keyUp',
-        modifiers: isMac ? 4 : 2, // 与按下时保持一致，确保修饰键正确释放
-        windowsVirtualKeyCode: 65,
-        key: 'a',
-        code: 'KeyA',
-      })
-      await new Promise((resolve) => setTimeout(resolve, 30))
-      await yanhuDevToolsHub.send(tab.id, 'Input.dispatchKeyEvent', {
-        type: 'rawKeyDown',
-        windowsVirtualKeyCode: 8, // Backspace
-        key: 'Backspace',
-        code: 'Backspace',
-      })
-      await yanhuDevToolsHub.send(tab.id, 'Input.dispatchKeyEvent', {
-        type: 'keyUp',
-        windowsVirtualKeyCode: 8,
-        key: 'Backspace',
-        code: 'Backspace',
-      })
-      await new Promise((resolve) => setTimeout(resolve, 30))
-    }
-
-    // 3. 真实文本流注入 (Input.insertText)：原汁原味触发内部 input 事件
-    if (text.length > 0) {
-      await yanhuDevToolsHub.send(tab.id, 'Input.insertText', { text })
-      await new Promise((resolve) => setTimeout(resolve, 40))
-    }
-
-    // 4. 回车收口（关键安全语义）：默认只派发**合成（非受信任）**回车——可触发页面自身的
-    //    keydown/keypress/keyup 监听（下拉筛选、联想选定等），但**不会**触发浏览器对 <form> 的
-    //    隐式提交。实测事故：在表单内的搜索框上发原生回车，导致「请假申请」被直接提交并白屏。
-    //    仅当调用方显式 allowFormSubmit=true 时，才下发 CDP 原生受信任回车以真正提交表单。
-    if (options.pressEnter) {
-      if (options.allowFormSubmit === true) {
-        await yanhuDevToolsHub.send(tab.id, 'Input.dispatchKeyEvent', {
-          type: 'rawKeyDown',
-          windowsVirtualKeyCode: 13,
-          nativeVirtualKeyCode: 13,
-          key: 'Enter',
-          code: 'Enter',
-          text: '\r',
-          unmodifiedText: '\r',
-        })
-        await new Promise((resolve) => setTimeout(resolve, 30))
-        await yanhuDevToolsHub.send(tab.id, 'Input.dispatchKeyEvent', {
-          type: 'keyUp',
-          windowsVirtualKeyCode: 13,
-          nativeVirtualKeyCode: 13,
-          key: 'Enter',
-          code: 'Enter',
-        })
-      } else {
-        // 合成（非受信任）回车：只触发页面 JS 监听，不触发原生表单提交
-        try {
-          await this.evalInPage(tab.id, buildSyntheticEnterScript())
-        } catch {
-          // 合成回车失败不影响已完成的文本写入
-        }
-      }
-    }
-  }
-
-  // ===== 确定性同步与因果感知（供工具层稳态与因果引擎消费） =====
-
-  /** 网络平面：读取目标标签当前在途业务请求数（缺省作用于激活标签） */
-  public getInflightRequestCount(tabId?: string): number {
-    const tab = this.resolveTab(tabId)
-    return tab ? yanhuDevToolsHub.getInflightCount(tab.id) : 0
-  }
-
-  /** 网络平面：读取目标标签最近一次网络活动时间戳（缺省作用于激活标签） */
-  public getNetworkActivityAt(tabId?: string): number {
-    const tab = this.resolveTab(tabId)
-    return tab ? yanhuDevToolsHub.getNetworkActivityAt(tab.id) : 0
-  }
-
-  /** 标签拓扑：当前标签总数（新标签页因果贯通判定用） */
-  public getTabCount(): number {
-    return this.tabOrder.length
-  }
-
-  /** 构建标签的双平面稳态探针（网络平面取自 CDP 总线，DOM 平面走跨 Frame 排空脚本） */
-  private createStabilizationProbe(tabId: string): StabilizationProbe {
-    return {
-      inflightCount: () => yanhuDevToolsHub.getInflightCount(tabId),
-      lastNetworkActivityAt: () => yanhuDevToolsHub.getNetworkActivityAt(tabId),
-      drainCrossFrame: (options: CrossFrameDrainOptions) => this.drainCrossFrame(tabId, options),
-    }
-  }
-
-  /** 执行一次跨 Frame DOM 排空探测（脚本异常安全降级为「静止无突变」） */
-  private async drainCrossFrame(tabId: string, options: CrossFrameDrainOptions): Promise<CrossFrameDrainResult> {
-    try {
-      return normalizeCrossFrameDrain(await this.evalInPage(tabId, buildCrossFrameDrainScript(options)))
-    } catch {
-      return { settled: true, mutated: false, mutations: 0, frames: 0, elapsedMs: 0 }
-    }
-  }
-
-  /**
-   * 因果探测：首个跨 Frame DOM 突变即提前返回，否则等待至观察窗截止（No-Op 判定用）。
-   */
-  public async probeCrossFrameActivity(tabId: string | undefined, windowMs: number): Promise<CrossFrameDrainResult> {
-    const tab = this.resolveTab(tabId)
-    if (!tab) return { settled: true, mutated: false, mutations: 0, frames: 0, elapsedMs: 0 }
-    return this.drainCrossFrame(tab.id, { minMs: 0, maxMs: windowMs, quietMs: 0, resolveOnFirstMutation: true })
-  }
-
-  /**
-   * 双平面自适应静止等待：网络流在途清零 + 跨 Frame DOM 排空 + 滑动窗口静默确认。
-   * 完全由网络与渲染管线自适应，无需用户配置任何延时。
-   */
-  public async awaitStable(tabId: string | undefined, options: QuiescenceOptions = {}): Promise<QuiescenceResult> {
-    const tab = this.resolveTab(tabId)
-    if (!tab) {
-      return { settled: true, timedOut: false, elapsedMs: 0, inflight: 0, frames: 0, mutations: 0, lastActivityAt: 0 }
-    }
-    return yanhuStabilizationWatcher.waitForQuiescence(this.createStabilizationProbe(tab.id), options)
-  }
-
-  /**
-   * 等待页面停止加载并进入双平面静止态（供工具层 waitForNavigation / 导航后收口使用）。
-   *
-   * 先按底层 WebContents 的加载态等待 `did-stop-loading`，随后以网络流与跨 Frame DOM 排空
-   * 自适应确认静默；任一平面活跃即延后结算，硬超时兜底不阻塞。
-   */
-  public async waitForIdle(tabId: string | undefined, timeoutMs = 3000): Promise<void> {
-    const tab = this.resolveTab(tabId)
-    const wc = tab?.view?.webContents
-    if (!tab || !wc || wc.isDestroyed()) return
-    if (wc.isLoading()) {
-      await new Promise<void>((resolve) => {
-        let settled = false
-        const finish = (): void => {
-          if (settled) return
-          settled = true
-          clearTimeout(timer)
-          wc.removeListener('did-stop-loading', finish)
-          resolve()
-        }
-        const timer = setTimeout(finish, timeoutMs)
-        wc.once('did-stop-loading', finish)
-      })
-    }
-    await this.awaitStable(tab.id, {
-      timeoutMs: Math.max(400, Math.min(timeoutMs, 4000)),
-      windowMs: 400,
-    })
   }
 }
 
