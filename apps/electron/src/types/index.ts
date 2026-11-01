@@ -3,6 +3,7 @@
  */
 
 import type {
+  WqxtAiConfig,
   YanhuCreateTabInput,
   YanhuNavigateInput,
   YanhuScopeInput,
@@ -10,25 +11,19 @@ import type {
   YanhuViewLayout,
 } from '@profer/shared'
 
-export type ThemeMode = 'light' | 'dark' | 'system' | 'special'
+export type ThemeMode = 'light' | 'dark' | 'system'
 export type ThemeStyle = string
 export type InterfaceVariant = 'classic' | 'modern'
 
 export const DEFAULT_INTERFACE_VARIANT: InterfaceVariant = 'classic'
-
-/** 皮肤注册表条目（resources/skins 或 ~/.cdutai/skins 下的 manifest.json） */
-export interface SkinInfo {
-  id: string
-  name: string
-  tone: 'light' | 'dark'
-  preview?: string
-}
 
 /** 持久化设置（~/.cdutai/settings.json 的子集） */
 export interface AppSettings {
   themeMode: ThemeMode
   themeStyle: ThemeStyle
   interfaceVariant: InterfaceVariant
+  /** 问渠课堂 AI 助手 LLM 配置（含 apiKey，仅主进程可读） */
+  llmConfig?: WqxtAiConfig
 }
 
 export interface YanhuViewportRect {
@@ -57,6 +52,8 @@ export interface YanhuExpressApi {
   createTab(input: YanhuCreateTabInput): Promise<YanhuTabsState>
   activateTab(input: { tabId: string }): Promise<YanhuTabsState>
   closeTab(input: { tabId: string }): Promise<YanhuTabsState>
+  closeOtherTabs(input: { tabId?: string }): Promise<YanhuTabsState>
+  closeRightTabs(input: { tabId?: string }): Promise<YanhuTabsState>
   reorderTabs(input: { orderedTabIds: string[] }): Promise<YanhuTabsState>
   navigate(input: YanhuNavigateInput): Promise<YanhuTabsState>
   goBack(): Promise<YanhuTabsState>
@@ -73,11 +70,5 @@ export interface YanhuExpressApi {
 export interface ElectronAPI {
   getSettings(): Promise<AppSettings>
   updateSettings(patch: Partial<AppSettings>): Promise<AppSettings>
-  getSystemTheme(): Promise<boolean>
-  onSystemThemeChanged(cb: (isDark: boolean) => void): () => void
-  onThemeSettingsChanged(cb: (settings: AppSettings) => void): () => void
-  getSkins(): Promise<SkinInfo[]>
-  refreshSkins(): Promise<SkinInfo[]>
-  getSkinCss(id: string): Promise<string | null>
   yanhuExpress: YanhuExpressApi
 }

@@ -81,7 +81,22 @@ export function YanhuExpressView({
     if (!api) return
     let alive = true
     const unsubTabs = api.onTabsChanged((state: YanhuTabsState) => {
-      if (alive) setTabsState(state)
+      if (alive) {
+        setTabsState(state)
+        const validIds = new Set(state.tabs.map((t) => t.id))
+        setLoadingMap((prev) => {
+          let changed = false
+          const next: Record<string, boolean> = {}
+          for (const [k, v] of Object.entries(prev)) {
+            if (validIds.has(k)) {
+              next[k] = v
+            } else {
+              changed = true
+            }
+          }
+          return changed ? next : prev
+        })
+      }
     })
     const unsubLoading = api.onLoadingChanged((event: YanhuLoadingChangedEvent) => {
       if (!alive) return
@@ -299,6 +314,8 @@ export function YanhuExpressView({
         {blockedTarget ? (
           <YanhuBlockedPage
             targetUrl={blockedTarget}
+            homeTitle="问渠学堂"
+            homeUrl={WQXT_DEFAULT_HOME_URL}
             onBack={() => run(() => api.goBack())}
             onGoHome={() => run(() => api.navigate({ url: WQXT_DEFAULT_HOME_URL }))}
             onOpenExternal={openExternal}

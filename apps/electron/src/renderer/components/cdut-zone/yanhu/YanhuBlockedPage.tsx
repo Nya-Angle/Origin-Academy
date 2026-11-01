@@ -3,7 +3,7 @@
  *
  * 当主进程安全网关阻断非网页协议访问（如 `mailto:` / `javascript:` / `file:`）时，
  * 标签 url 被置为 `yanhu://blocked?target=...` 哨兵，
- * 本组件据此渲染规定文案与三按钮组（返回上一页 / 回到办事大厅 / 系统浏览器打开外链）。
+ * 本组件据此渲染规定文案与三按钮组（返回上一页 / 回到办事大厅或问渠学堂 / 系统浏览器打开外链）。
  *
  * 视觉：校徽安全护盾矢量图标（红金辉光 + 现代立体阴影），深浅色自动切换微底色，夜间无刺眼光晕。
  */
@@ -15,6 +15,10 @@ import { YANHU_DEFAULT_HOME_URL } from '@profer/shared'
 interface YanhuBlockedPageProps {
   /** 被拦截的原始外链目标 */
   targetUrl: string
+  /** 首页入口名称，如“问渠学堂”或“办事大厅” */
+  homeTitle?: string
+  /** 首页入口 URL */
+  homeUrl?: string
   onBack: () => void
   onGoHome: () => void
   onOpenExternal: (url: string) => void
@@ -22,10 +26,15 @@ interface YanhuBlockedPageProps {
 
 export function YanhuBlockedPage({
   targetUrl,
+  homeTitle,
+  homeUrl,
   onBack,
   onGoHome,
   onOpenExternal,
 }: YanhuBlockedPageProps): React.ReactElement {
+  const displayHomeTitle = homeTitle || '办事大厅'
+  const displayHomeUrl = homeUrl || YANHU_DEFAULT_HOME_URL
+
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-content-area p-6">
       <div className="flex w-full max-w-md flex-col items-center rounded-2xl border border-border/60 bg-card/95 p-8 text-center shadow-xl shadow-black/5 backdrop-blur-sm dark:border-border/40 dark:bg-card/90">
@@ -66,7 +75,7 @@ export function YanhuBlockedPage({
               className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-border/60 bg-background/70 text-[11px] font-medium text-foreground/85 transition-colors hover:border-primary/40 hover:text-primary"
             >
               <Home size={13} />
-              <span>回到办事大厅</span>
+              <span>回到{displayHomeTitle}</span>
             </button>
             <button
               type="button"
@@ -81,7 +90,7 @@ export function YanhuBlockedPage({
         </div>
 
         <p className="mt-4 text-[10px] text-muted-foreground/60">
-          可信入口：{YANHU_DEFAULT_HOME_URL}
+          可信入口：{displayHomeUrl}
         </p>
       </div>
     </div>

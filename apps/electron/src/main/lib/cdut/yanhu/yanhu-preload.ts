@@ -14,6 +14,23 @@
 import { ipcRenderer, webFrame } from 'electron'
 import { buildYanhuFingerprintScript } from './yanhu-fingerprint-script'
 import { buildWqxtLivingRoomCleanerScript } from './wqxt-livingroom-cleaner'
+import { WQXT_AI_BRIDGE_TYPES as T } from './wqxt-ai-panel'
+import { applyCdutCasLoginHelper } from './cdut-cas-login-helper'
+
+/**
+ * AI 问渠助手 IPC 渠道名。
+ * 必须与 `packages/shared/src/types/cdut.ts` 的 `WQXT_AI_IPC_CHANNELS` 逐字一致；
+ * Preload 为独立打包（零外部依赖），不能 import `@profer/shared`，故此处字面量写死。
+ */
+const WQXT_AI_IPC = {
+  SEND_MESSAGE: 'yanhu-express:wqxt-ai-send',
+  ABORT_MESSAGE: 'yanhu-express:wqxt-ai-abort',
+  GET_CONFIG: 'yanhu-express:wqxt-ai-get-config',
+  SAVE_CONFIG: 'yanhu-express:wqxt-ai-save-config',
+  GET_HISTORY: 'yanhu-express:wqxt-ai-get-history',
+  CLEAR_HISTORY: 'yanhu-express:wqxt-ai-clear-history',
+  STREAM_CHUNK: 'yanhu-express:wqxt-ai-stream-chunk',
+} as const
 
 function applyYanhuFingerprint(): void {
   try {
@@ -85,6 +102,84 @@ function applyWqxtDownloadBridge(): void {
   }
 }
 
+/** 页面 <-> 主进程 AI 消息回投（扁平展开，页面直接读取数据字段） */
+function replyWqxtAi(type: string, requestId: unknown, extra: Record<string, unknown>): void {
+  try {
+    const id = typeof requestId === 'string' ? requestId : ''
+    window.postMessage(Object.assign({ type, requestId: id }, extra), '*')
+  } catch (err) {
+    console.warn('[AI 问渠助手·Preload] 回投失败:', err)
+  }
+}
+
+function applyWqxtAiBridge(): void {
+  try {
+    if (typeof window === 'undefined') return
+    // 仅在顶层窗口挂载桥接，避免子 iframe 重复监听
+    if (window.top !== window) return
+    const w = window as any
+    if (w.__profer_wqxt_ai_bridge_installed) return
+    w.__profer_wqxt_ai_bridge_installed = true
+
+    window.addEventListener('message', (event) => {
+      if (event.source !== window) return
+      const data = event.data
+      if (!data || typeof data !== 'object') return
+      const type = data.type
+      if (typeof type !== 'string' || type.indexOf('__profer_wqxt_ai_') !== 0) return
+      const payload = data.payload && typeof data.payload === 'object' ? data.payload : {}
+
+      if (type === T.REQUEST_SEND) {
+        ipcRenderer.send(WQXT_AI_IPC.SEND_MESSAGE, payload)
+        return
+      }
+      if (type === T.REQUEST_ABORT) {
+        ipcRenderer.send(WQXT_AI_IPC.ABORT_MESSAGE, payload)
+        return
+      }
+      if (type === T.REQUEST_GET_CONFIG) {
+        void ipcRenderer
+          .invoke(WQXT_AI_IPC.GET_CONFIG)
+          .then((cfg) => replyWqxtAi(T.RESPONSE_CONFIG, (payload as any).requestId, cfg || {}))
+        return
+      }
+      if (type === T.REQUEST_SAVE_CONFIG) {
+        // 页面提交扁平补丁 { requestId, ...patch }，整体下发；结果扁平回投
+        void ipcRenderer
+          .invoke(WQXT_AI_IPC.SAVE_CONFIG, payload)
+          .then((res) => replyWqxtAi(T.RESPONSE_SAVE_RESULT, (payload as any).requestId, res || {}))
+        return
+      }
+      if (type === T.REQUEST_GET_HISTORY) {
+        void ipcRenderer.invoke(WQXT_AI_IPC.GET_HISTORY, payload).then((list) =>
+          replyWqxtAi(T.RESPONSE_HISTORY, (payload as any).requestId, {
+            messages: Array.isArray(list) ? list : [],
+          }),
+        )
+        return
+      }
+      if (type === T.REQUEST_CLEAR_HISTORY) {
+        void ipcRenderer
+          .invoke(WQXT_AI_IPC.CLEAR_HISTORY, payload)
+          .then(() => replyWqxtAi(T.RESPONSE_HISTORY, (payload as any).requestId, { messages: [] }))
+      }
+    })
+
+    ipcRenderer.on(WQXT_AI_IPC.STREAM_CHUNK, (_event, payload) => {
+      try {
+        if (!payload || typeof payload !== 'object') return
+        window.postMessage({ type: T.RESPONSE_STREAM, payload }, '*')
+      } catch (err) {
+        console.warn('[AI 问渠助手·Preload] 流事件回投失败:', err)
+      }
+    })
+  } catch (err) {
+    console.warn('[AI 问渠助手·Preload] AI 桥接监听失败:', err)
+  }
+}
+
 applyYanhuFingerprint()
 applyWqxtCleaner()
 applyWqxtDownloadBridge()
+applyWqxtAiBridge()
+applyCdutCasLoginHelper()

@@ -18,7 +18,7 @@ import { registerIpcHandlers } from './lib/yanhu-ipc'
 const IS_DEV = !app.isPackaged || process.argv.includes('--dev')
 if (IS_DEV) process.env.PROFER_DEV = '1'
 
-app.setName(resolveDevAppName())
+app.setName(IS_DEV ? resolveDevAppName() : 'CDUT Studio')
 app.setPath('userData', resolveDevUserDataPath(app.getPath('appData'), !IS_DEV))
 
 // 移除历史版本持久化保存的账户 / 身份信息（登录 Cookie、分区缓存）

@@ -99,6 +99,7 @@ export function applyYanhuSessionIdentity(ses: Session): void {
       if (details.url.includes('wqxt.cdut.edu.cn')) {
         const currentRef = requestHeaders['Referer'] || requestHeaders['referer'] || ''
         if (!currentRef || currentRef.includes('play.wqxt.cdut.edu.cn')) {
+          delete requestHeaders['referer']
           requestHeaders['Referer'] = 'https://classroom.wqxt.cdut.edu.cn/'
         }
       }

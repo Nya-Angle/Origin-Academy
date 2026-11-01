@@ -3,18 +3,26 @@
  *
  * 把渲染层通过 preload 暴露的通道统一转发到对应服务：
  * - 智联万站全部标签 / 导航 / 诊断能力 → YanhuExpressManager 单例；
+ * - CDUT CAS 多账号持久化与快速登录 → cdutAccountManager 单例；
  * - 主题 / 设置 / 皮肤 → app-settings 与 skin-service。
  *
  * 桌宠相关通道不在应用范围内：PET_SYNC_VIEWPORT 仅做接收即丢弃，
  * 保证渲染层几何上报不会因 handler 缺失而中断。
  */
 
-import { ipcMain, nativeTheme } from 'electron'
-import { YANHU_EXPRESS_IPC_CHANNELS as CH, type YanhuCreateTabInput, type YanhuNavigateInput, type YanhuScopeInput, type YanhuViewLayout } from '@profer/shared'
+import { ipcMain } from 'electron'
+import {
+  CDUT_AUTH_IPC_CHANNELS,
+  YANHU_EXPRESS_IPC_CHANNELS as CH,
+  type YanhuCreateTabInput,
+  type YanhuNavigateInput,
+  type YanhuScopeInput,
+  type YanhuViewLayout,
+} from '@profer/shared'
 import { yanhuExpressManager } from './cdut/yanhu/yanhu-express-manager'
+import { cdutAccountManager } from './cdut/cdut-account-manager'
 import { yanhuThemeService } from './cdut/yanhu/yanhu-theme-service'
 import { getSettings, updateSettings } from './app-settings'
-import { getSkinCss, listSkins, refreshSkins } from './skin-service'
 import type { AppSettings } from '../../types'
 
 interface TabInput {
@@ -39,6 +47,23 @@ export function registerIpcHandlers(): void {
   registered = true
 
   const manager = yanhuExpressManager
+
+  // ===== CDUT CAS 多账号管理与凭证 =====
+  ipcMain.handle(CDUT_AUTH_IPC_CHANNELS.GET_SAVED_ACCOUNTS, () => cdutAccountManager.getSavedAccounts())
+  ipcMain.handle(
+    CDUT_AUTH_IPC_CHANNELS.SAVE_ACCOUNT,
+    (_event, payload?: { username?: string; password?: string }) => {
+      return cdutAccountManager.saveAccount(payload?.username ?? '', payload?.password ?? '')
+    },
+  )
+  ipcMain.handle(CDUT_AUTH_IPC_CHANNELS.REMOVE_ACCOUNT, (_event, payload?: { username?: string }) => {
+    return cdutAccountManager.removeAccount(payload?.username ?? '')
+  })
+  ipcMain.on('cdut-auth:submit-attempt', (event, payload?: { username?: string; password?: string }) => {
+    if (payload?.username && payload?.password) {
+      cdutAccountManager.recordPendingSubmit(event.sender.id, payload.username, payload.password)
+    }
+  })
 
   // ===== 智联万站：视图与生命周期 =====
   ipcMain.handle(CH.INIT_OR_RESTORE, (_event, input?: YanhuScopeInput) => manager.initOrRestore(input))
@@ -85,18 +110,11 @@ export function registerIpcHandlers(): void {
   )
   ipcMain.handle(CH.OPEN_DIAGNOSTIC_CONSOLE, () => manager.openDiagnosticConsole())
 
-  // 桌宠功能不在应用中：接收即丢弃，保持渲染层几何上报链路完整
-  ipcMain.handle(CH.PET_SYNC_VIEWPORT, () => undefined)
-
-  // ===== 主题 / 设置 / 皮肤 =====
+  // ===== 设置 =====
   ipcMain.handle('settings:get', () => getSettings())
   ipcMain.handle('settings:update', (_event, patch: Partial<AppSettings>) => {
     const next = updateSettings(patch ?? {})
     void yanhuThemeService.syncAll()
     return next
   })
-  ipcMain.handle('theme:get-system', () => nativeTheme.shouldUseDarkColors)
-  ipcMain.handle('skins:list', () => listSkins())
-  ipcMain.handle('skins:refresh', () => refreshSkins())
-  ipcMain.handle('skins:get-css', (_event, id: string) => getSkinCss(id))
 }
