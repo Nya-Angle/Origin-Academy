@@ -39,19 +39,9 @@ win:
     - target: portable
       arch:
         - x64
-    - target: nsis
-      arch:
-        - x64
 
 # 免安装单文件版：NSIS 自解压壳，运行时解压到临时目录，无需安装
 portable:
-  artifactName: CDUT-Studio-Portable-${version}.${ext}
+  artifactName: CDUT-Studio-${version}.${ext}
   # 按版本隔离解压目录，避免不同版本复用同一临时目录造成残留文件
   unpackDirName: CDUT-Studio-${version}
-
-nsis:
-  artifactName: CDUT-Studio-Setup-${version}.${ext}
-  oneClick: false
-  allowToChangeInstallationDirectory: true
-  createDesktopShortcut: true
-  createStartMenuShortcut: true

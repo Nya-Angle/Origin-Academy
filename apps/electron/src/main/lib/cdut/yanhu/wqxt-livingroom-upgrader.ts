@@ -2557,6 +2557,39 @@ div.header-info.profer-wqxt-header-upgraded > :not(#__profer-wqxt-edu-header) {
   color: #4f46e5 !important;
   font-weight: 700 !important;
 }
+.profer-cat-badge-status {
+  position: absolute !important;
+  top: 3px !important;
+  right: 3px !important;
+  color: #ffffff !important;
+  font-size: 9px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  padding: 2px 5px !important;
+  border-radius: 3px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28) !important;
+  pointer-events: none !important;
+}
+.profer-cat-badge-upcoming {
+  background: rgba(245, 158, 11, 0.94) !important;
+}
+.profer-cat-badge-generating {
+  background: rgba(14, 165, 233, 0.94) !important;
+}
+.profer-cat-badge-none {
+  background: rgba(100, 116, 139, 0.9) !important;
+}
+.profer-cat-badge-live {
+  background: rgba(239, 68, 68, 0.95) !important;
+}
+.profer-cat-card.is-muted,
+.profer-cat-modal-card.is-muted {
+  opacity: 0.78 !important;
+}
+.profer-cat-card.is-muted:hover,
+.profer-cat-modal-card.is-muted:hover {
+  opacity: 0.96 !important;
+}
 
 /* ===== 5. 模态大窗口全览 (#__profer-catalogue-modal) ===== */
 #__profer-catalogue-modal {
@@ -3069,16 +3102,20 @@ function buildResourcePanelHtml(): string {
           <span class="resource-badge">高清幻灯片</span>
         </div>
       </div>
-      <p class="resource-card-desc">自动提取本节授课 PPT 页面，支持导出为幻灯片原件、打印 PDF 或离线 HTML 讲义。</p>
+      <p class="resource-card-desc">自动提取本节授课 PPT 页面，支持导出 PPTX 原件、原生静默合成横向纯享/纵向讲义 PDF 或离线 HTML 讲义。</p>
       <div class="resource-status" id="__profer-ppt-status"></div>
       <div class="resource-actions">
         <button class="resource-btn primary" id="__profer-btn-ppt-pptx" aria-label="导出 PPTX 原文件">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
           <span>导出 PPTX</span>
         </button>
-        <button class="resource-btn" id="__profer-btn-ppt-pdf" aria-label="打印或另存为 PDF">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-          <span>打印 / PDF</span>
+        <button class="resource-btn" id="__profer-btn-ppt-pdf-slides" aria-label="导出横向纯享 PDF 课件 (16:9 满铺无白边)" title="原生静默合成 16:9 横向满铺 PDF，一页一图无白边，无需调用系统虚拟打印机">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect><path d="M8 10h8"></path><path d="M8 14h5"></path></svg>
+          <span>横向纯享 PDF</span>
+        </button>
+        <button class="resource-btn" id="__profer-btn-ppt-pdf-handout" aria-label="导出纵向讲义 PDF (含时间点与文字)" title="原生静默合成 A4 纵向讲义 PDF，包含视频时间点与课堂文字记录">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><rect x="8" y="12" width="8" height="5" rx="1"></rect></svg>
+          <span>纵向讲义 PDF</span>
         </button>
         <button class="resource-btn" id="__profer-btn-ppt-html" aria-label="下载 HTML 离线讲义">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
@@ -4852,10 +4889,10 @@ export function buildWqxtUpgradeRuntimeScript(): string {
         return {
           el: el,
           getState: function () { return state; },
-          setPhase: function (text) {
+          setPhase: function (text, force) {
             if (state !== 'running' || typeof text !== 'string' || !text) return;
             var now = Date.now();
-            if (now - lastTextAt < 500) return;
+            if (!force && now - lastTextAt < 500) return;
             lastTextAt = now;
             titleEl.textContent = text;
           },
@@ -4919,7 +4956,7 @@ export function buildWqxtUpgradeRuntimeScript(): string {
             setCardState('success');
             closeBtn.textContent = '关闭';
             iconEl.innerHTML = SVD_ICONS.success;
-            titleEl.textContent = '下载完成，现在可以打开了';
+            titleEl.textContent = o.title || '下载完成，现在可以打开了';
             if (o.name) fileEl.textContent = o.name;
             view.fraction = 1;
             barEl.classList.remove('svd-indeterminate');
@@ -4928,9 +4965,9 @@ export function buildWqxtUpgradeRuntimeScript(): string {
             var size = Number(o.size) || 0;
             metaL.textContent = '100%' + (size > 0 ? ' · ' + svdFormatBytes(size) : '');
             metaR.textContent = '用时 ' + svdFormatDuration((Date.now() - startTs) / 1000, false);
-            hintEl.textContent = '文件已完整写入磁盘，可直接打开播放。';
+            hintEl.textContent = o.hint || '文件已完整写入磁盘，可直接打开播放。';
             setActions([
-              { label: '▶ 立即播放', primary: true, onClick: o.onPreview },
+              { label: o.actionLabel || '▶ 立即播放', primary: true, onClick: o.onPreview },
               { label: '知道了', onClick: function () { dismiss(false); } }
             ]);
             autoDismiss(SVD_CONFIG.successAutoDismissMs);
@@ -5911,23 +5948,215 @@ export function buildWqxtUpgradeRuntimeScript(): string {
       }
     }
 
-    function buildLectureHtml(title, slideList) {
+    // ---------- 原生静默 PDF 导出桥接与高清图片并发预加载 ----------
+    var pdfPendingCallbacks = {};
+
+    window.addEventListener('message', function (event) {
+      try {
+        if (event.source !== window) return;
+        var data = event.data;
+        if (!data || typeof data !== 'object') return;
+        if (data.type !== '__profer_wqxt_pdf_export_response') return;
+        var key = (data.phase || '') + ':' + (data.requestId || '');
+        var cb = pdfPendingCallbacks[key];
+        if (typeof cb === 'function') {
+          delete pdfPendingCallbacks[key];
+          cb(data.payload || { ok: false });
+        }
+      } catch (e) {}
+    });
+
+    function invokePdfExportInit(requestId, filename, mode) {
+      return new Promise(function (resolve) {
+        var key = 'init:' + requestId;
+        var timer = setTimeout(function () {
+          if (pdfPendingCallbacks[key]) {
+            delete pdfPendingCallbacks[key];
+            resolve({ ok: false, canceled: true });
+          }
+        }, 180000);
+        pdfPendingCallbacks[key] = function (res) {
+          clearTimeout(timer);
+          resolve(res || { ok: false });
+        };
+        try {
+          window.postMessage({
+            type: '__profer_wqxt_pdf_export_init',
+            requestId: requestId,
+            filename: filename,
+            mode: mode
+          }, '*');
+        } catch (err) {
+          clearTimeout(timer);
+          delete pdfPendingCallbacks[key];
+          resolve({ ok: false, error: String(err && err.message ? err.message : err) });
+        }
+      });
+    }
+
+    function invokePdfExportRender(requestId, htmlContent, mode, filename) {
+      return new Promise(function (resolve) {
+        var key = 'render:' + requestId;
+        var timer = setTimeout(function () {
+          if (pdfPendingCallbacks[key]) {
+            delete pdfPendingCallbacks[key];
+            resolve({ ok: false, error: '合成 PDF 超时，请重试' });
+          }
+        }, 240000);
+        pdfPendingCallbacks[key] = function (res) {
+          clearTimeout(timer);
+          resolve(res || { ok: false });
+        };
+        try {
+          window.postMessage({
+            type: '__profer_wqxt_pdf_export_render',
+            requestId: requestId,
+            html: htmlContent,
+            mode: mode,
+            filename: filename
+          }, '*');
+        } catch (err) {
+          clearTimeout(timer);
+          delete pdfPendingCallbacks[key];
+          resolve({ ok: false, error: String(err && err.message ? err.message : err) });
+        }
+      });
+    }
+
+    function sendPdfExportCancel(requestId) {
+      try {
+        window.postMessage({
+          type: '__profer_wqxt_pdf_export_cancel',
+          requestId: requestId
+        }, '*');
+      } catch (e) {}
+    }
+
+    function fetchImageAsDataUrl(imgUrl, signal) {
+      if (!imgUrl) return Promise.resolve('');
+      if (imgUrl.indexOf('data:') === 0) return Promise.resolve(imgUrl);
+      if (signal && signal.aborted) {
+        var abortErr = new Error('Aborted');
+        abortErr.name = 'AbortError';
+        return Promise.reject(abortErr);
+      }
+      return fetch(imgUrl, { signal: signal, credentials: 'omit' }).then(function (resp) {
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        return resp.blob();
+      }).then(function (blob) {
+        return new Promise(function (resolve, reject) {
+          var reader = new FileReader();
+          reader.onloadend = function () {
+            resolve(typeof reader.result === 'string' ? reader.result : imgUrl);
+          };
+          reader.onerror = function () { reject(new Error('FileReader error')); };
+          reader.readAsDataURL(blob);
+        });
+      }).catch(function (err) {
+        if (err && err.name === 'AbortError') throw err;
+        // 回退 Canvas 方式转 Base64
+        return new Promise(function (resolve) {
+          var img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = function () {
+            try {
+              var canvas = document.createElement('canvas');
+              canvas.width = img.naturalWidth || 1280;
+              canvas.height = img.naturalHeight || 720;
+              var ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0);
+              resolve(canvas.toDataURL('image/jpeg', 0.92));
+            } catch (e) {
+              resolve(imgUrl);
+            }
+          };
+          img.onerror = function () { resolve(imgUrl); };
+          img.src = imgUrl;
+        });
+      });
+    }
+
+    async function preloadSlidesForPdf(slideList, signal, onProgress) {
+      var total = slideList.length;
+      var out = new Array(total);
+      var completed = 0;
+      var nextIdx = 0;
+      var concurrency = 4;
+
+      async function worker() {
+        while (true) {
+          if (signal && signal.aborted) {
+            var abortErr = new Error('Aborted');
+            abortErr.name = 'AbortError';
+            throw abortErr;
+          }
+          var idx = nextIdx++;
+          if (idx >= total) return;
+          var item = slideList[idx];
+          var dataUrl = await fetchImageAsDataUrl(item.imgSrc, signal);
+          out[idx] = {
+            imgSrc: dataUrl || item.imgSrc,
+            text: item.text || '',
+            switchTime: item.switchTime || '00:00:00'
+          };
+          completed++;
+          if (typeof onProgress === 'function') {
+            try { onProgress(completed, total); } catch (e) {}
+          }
+        }
+      }
+
+      var workers = [];
+      var workerCount = Math.min(concurrency, total);
+      for (var w = 0; w < workerCount; w++) {
+        workers.push(worker());
+      }
+      await Promise.all(workers);
+      return out;
+    }
+
+    function buildSlidesPdfHtml(title, slideList) {
       var html = '<!DOCTYPE html><html><head><meta charset="utf-8">';
       html += '<title>' + escapeHtml(title) + ' (' + slideList.length + '页)</title>';
       html += '<style>';
-      html += 'body { font-family: system-ui, -apple-system, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; color: #333; }';
-      html += '.toolbar { position: sticky; top: 0; background: #fff; padding: 12px 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; z-index: 100; border-radius: 8px; margin-bottom: 20px; max-width: 960px; margin-left: auto; margin-right: auto; }';
-      html += '.btn { background: #1890ff; color: #fff; border: none; padding: 8px 18px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; }';
-      html += '.slide-card { background: #fff; max-width: 960px; margin: 0 auto 24px; padding: 20px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); page-break-inside: avoid; }';
-      html += '.slide-header { display: flex; justify-content: space-between; margin-bottom: 12px; font-weight: bold; color: #555; border-bottom: 1px solid #eee; padding-bottom: 8px; }';
-      html += '.slide-img { width: 100%; height: auto; display: block; border: 1px solid #eee; }';
-      html += '.slide-ocr { margin-top: 10px; font-size: 13px; color: #666; white-space: pre-wrap; background: #fafafa; padding: 8px 12px; border-radius: 4px; }';
-      html += '@media print { body { background: #fff; padding: 0; } .toolbar { display: none; } .slide-card { box-shadow: none; margin: 0 0 12px; padding: 0; page-break-after: always; } }';
+      html += '@page { size: 297mm 167.0625mm; margin: 0; }';
+      html += '* { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }';
+      html += 'html, body { margin: 0; padding: 0; width: 297mm; background: #ffffff; }';
+      html += '.slide-page { width: 297mm; height: 167.0625mm; margin: 0; padding: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #ffffff; page-break-after: always; break-after: page; page-break-inside: avoid; break-inside: avoid; }';
+      html += '.slide-page:last-child { page-break-after: auto; break-after: auto; }';
+      html += '.slide-full-img { width: 100%; height: 100%; object-fit: contain; display: block; border: 0; margin: 0; padding: 0; }';
       html += '</style></head><body>';
-      html += '<div class="toolbar">';
-      html += '<div><strong>' + escapeHtml(title) + '</strong>（共 ' + slideList.length + ' 页高清 PPT）</div>';
-      html += '<button class="btn" onclick="window.print()">🖨️ 打印 / 另存为 PDF</button>';
-      html += '</div>';
+      for (var i = 0; i < slideList.length; i++) {
+        var s = slideList[i];
+        html += '<div class="slide-page">';
+        html += '<img class="slide-full-img" src="' + escapeHtml(s.imgSrc) + '" />';
+        html += '</div>';
+      }
+      html += '</body></html>';
+      return html;
+    }
+
+    function buildLectureHtml(title, slideList, forPdfHandout) {
+      var html = '<!DOCTYPE html><html><head><meta charset="utf-8">';
+      html += '<title>' + escapeHtml(title) + ' (' + slideList.length + '页)</title>';
+      html += '<style>';
+      html += '@page { size: A4 portrait; margin: 12mm; }';
+      html += '* { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }';
+      html += 'body { font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: ' + (forPdfHandout ? '#ffffff' : '#f0f2f5') + '; margin: 0; padding: ' + (forPdfHandout ? '0' : '20px') + '; color: #1e293b; }';
+      html += '.toolbar { position: sticky; top: 0; background: #fff; padding: 12px 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: ' + (forPdfHandout ? 'none' : 'flex') + '; justify-content: space-between; align-items: center; z-index: 100; border-radius: 8px; margin-bottom: 20px; max-width: 960px; margin-left: auto; margin-right: auto; }';
+      html += '.btn { background: #4f46e5; color: #fff; border: none; padding: 8px 18px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; }';
+      html += '.slide-card { background: #fff; max-width: 960px; margin: 0 auto ' + (forPdfHandout ? '14px' : '24px') + '; padding: ' + (forPdfHandout ? '14px' : '20px') + '; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: ' + (forPdfHandout ? 'none' : '0 1px 4px rgba(0,0,0,0.08)') + '; page-break-inside: avoid; break-inside: avoid; }';
+      html += '.slide-header { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 13px; font-weight: 700; color: #475569; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; }';
+      html += '.slide-img { width: 100%; height: auto; display: block; border: 1px solid #e2e8f0; border-radius: 4px; }';
+      html += '.slide-ocr { margin-top: 8px; font-size: 12px; line-height: 1.5; color: #475569; white-space: pre-wrap; background: #f8fafc; padding: 8px 12px; border-radius: 6px; border: 1px solid #f1f5f9; }';
+      html += '@media print { body { background: #fff; padding: 0; } .toolbar { display: none !important; } .slide-card { box-shadow: none; margin: 0 0 14px; padding: 12px; page-break-inside: avoid; break-inside: avoid; } }';
+      html += '</style></head><body>';
+      if (!forPdfHandout) {
+        html += '<div class="toolbar">';
+        html += '<div><strong>' + escapeHtml(title) + '</strong>（共 ' + slideList.length + ' 页高清 PPT）</div>';
+        html += '<button class="btn" onclick="window.print()">🖨️ 打印 / 另存为 PDF</button>';
+        html += '</div>';
+      }
       for (var i = 0; i < slideList.length; i++) {
         var s = slideList[i];
         html += '<div class="slide-card">';
@@ -5940,44 +6169,21 @@ export function buildWqxtUpgradeRuntimeScript(): string {
       return html;
     }
 
-    function printLectureHtml(htmlContent) {
-      var iframe = document.createElement('iframe');
-      iframe.style.position = 'fixed';
-      iframe.style.right = '0';
-      iframe.style.bottom = '0';
-      iframe.style.width = '0';
-      iframe.style.height = '0';
-      iframe.style.border = '0';
-      document.body.appendChild(iframe);
-      var doc = iframe.contentWindow && iframe.contentWindow.document;
-      if (!doc) doc = iframe.contentDocument;
-      if (!doc) return;
-      doc.open();
-      doc.write(htmlContent);
-      doc.close();
-      setTimeout(function () {
-        try {
-          if (iframe.contentWindow) {
-            iframe.contentWindow.focus();
-            iframe.contentWindow.print();
-          }
-        } catch (e) {}
-        setTimeout(function () {
-          if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-        }, 60000);
-      }, 500);
-    }
-
     async function exportCoursewarePpt(type) {
       var btnPptx = byId('__profer-btn-ppt-pptx');
-      var btnPdf = byId('__profer-btn-ppt-pdf');
+      var btnPdfSlides = byId('__profer-btn-ppt-pdf-slides');
+      var btnPdfHandout = byId('__profer-btn-ppt-pdf-handout');
       var btnHtml = byId('__profer-btn-ppt-html');
       var statusEl = byId('__profer-ppt-status');
 
-      if (btnPptx) btnPptx.disabled = true;
-      if (btnPdf) btnPdf.disabled = true;
-      if (btnHtml) btnHtml.disabled = true;
+      function setPptButtonsDisabled(disabled) {
+        if (btnPptx) btnPptx.disabled = disabled;
+        if (btnPdfSlides) btnPdfSlides.disabled = disabled;
+        if (btnPdfHandout) btnPdfHandout.disabled = disabled;
+        if (btnHtml) btnHtml.disabled = disabled;
+      }
 
+      setPptButtonsDisabled(true);
       setResourceStatus(statusEl, '🔍 正在检查与提取课件数据...');
 
       try {
@@ -6073,15 +6279,104 @@ export function buildWqxtUpgradeRuntimeScript(): string {
         var safeTitle = courseTitle.replace(/[\\\\/:*?\"<>|]/g, '_');
 
         if (type === 'html') {
-          var lectureHtml = buildLectureHtml(courseTitle, slides);
+          var lectureHtml = buildLectureHtml(courseTitle, slides, false);
           var blob = new Blob([lectureHtml], { type: 'text/html;charset=utf-8' });
           triggerDownload(blob, safeTitle + '_讲义.html');
           setResourceStatus(statusEl, '✅ 已成功导出 ' + slides.length + ' 页 HTML 离线讲义！');
-        } else if (type === 'pdf') {
-          setResourceStatus(statusEl, '🖨️ 正在调起系统打印（可选择另存为 PDF）...');
-          var pdfHtml = buildLectureHtml(courseTitle, slides);
-          printLectureHtml(pdfHtml);
-          setResourceStatus(statusEl, '🖨️ 系统打印已就绪（共 ' + slides.length + ' 页）');
+        } else if (type === 'pdf-slides' || type === 'pdf-handout') {
+          CompletionAlert.prime();
+          var pdfMode = type === 'pdf-slides' ? 'slides' : 'handout';
+          var modeLabel = pdfMode === 'slides' ? '横向纯享 PDF' : '纵向讲义 PDF';
+          var defaultPdfName = safeTitle + (pdfMode === 'slides' ? '_纯享课件.pdf' : '_课堂讲义.pdf');
+          var pdfReqId = newUuid();
+
+          setResourceStatus(statusEl, '📂 请在弹出的保存窗口中选择 ' + modeLabel + ' 的保存位置...');
+          var initRes = await invokePdfExportInit(pdfReqId, defaultPdfName, pdfMode);
+          if (!initRes || initRes.canceled) {
+            setResourceStatus(statusEl, '⏹️ 已取消 ' + modeLabel + ' 导出。');
+            return;
+          }
+          if (!initRes.ok) {
+            throw new Error(initRes.error || '无法初始化 PDF 保存路径');
+          }
+
+          var finalPdfName = initRes.filename || defaultPdfName;
+          var pdfAbort = new AbortController();
+          var pdfCard = DownloadNotifier.create({
+            filename: finalPdfName,
+            onCancel: function () {
+              try { pdfAbort.abort(); } catch (e) {}
+              sendPdfExportCancel(pdfReqId);
+            },
+            onDismiss: function () { svdUnregister(pdfReqId); }
+          });
+          svdJobs[pdfReqId] = {
+            card: pdfCard,
+            panel: byId(RESOURCE_PANEL_ID),
+            filename: finalPdfName,
+            url: '',
+            blobTimer: null
+          };
+
+          try {
+            pdfCard.setPhase('正在预加载高清课件图片…', true);
+            var embeddedSlides = await preloadSlidesForPdf(slides, pdfAbort.signal, function (doneCount, totalCount) {
+              var frac = totalCount > 0 ? (doneCount / totalCount) * 0.82 : 0;
+              pdfCard.setProgress({
+                fraction: frac,
+                detail: '课件页 ' + doneCount + ' / ' + totalCount
+              });
+              setResourceStatus(statusEl, '🖼️ 正在预加载高清课件图片 (' + doneCount + ' / ' + totalCount + ')...');
+            });
+
+            pdfCard.setPhase('正在静默合成 PDF 并写入磁盘…', true);
+            pdfCard.setProgress({
+              fraction: 0.9,
+              detail: '正在合成 ' + embeddedSlides.length + ' 页 PDF'
+            });
+            setResourceStatus(statusEl, '📄 正在通过原生引擎合成 ' + modeLabel + '（共 ' + embeddedSlides.length + ' 页）...');
+
+            var pdfHtml = pdfMode === 'slides'
+              ? buildSlidesPdfHtml(courseTitle, embeddedSlides)
+              : buildLectureHtml(courseTitle, embeddedSlides, true);
+            embeddedSlides = null;
+
+            var renderRes = await invokePdfExportRender(pdfReqId, pdfHtml, pdfMode, finalPdfName);
+            pdfHtml = '';
+
+            if (renderRes && renderRes.canceled) {
+              pdfCard.cancelled();
+              setResourceStatus(statusEl, '⏹️ ' + modeLabel + ' 导出已取消。');
+              return;
+            }
+            if (!renderRes || !renderRes.ok) {
+              throw new Error((renderRes && renderRes.error) || 'PDF 合成写入失败');
+            }
+
+            pdfCard.success({
+              title: modeLabel + ' 导出完成，可立即打开',
+              hint: '文件已在内存合成完毕并一次性写入磁盘（无 0 KB 占位等待）。',
+              actionLabel: '▶ 立即打开',
+              size: renderRes.size || 0,
+              name: renderRes.filename || finalPdfName,
+              onPreview: function () { sendDownloadAction(pdfReqId, 'open'); },
+              onDismiss: function () { svdUnregister(pdfReqId); }
+            });
+            CompletionAlert.fire();
+            setResourceStatus(statusEl, '✅ 已成功导出 ' + slides.length + ' 页' + modeLabel + '：' + (renderRes.filename || finalPdfName));
+          } catch (pdfErr) {
+            if (pdfErr && pdfErr.name === 'AbortError') {
+              pdfCard.cancelled();
+              setResourceStatus(statusEl, '⏹️ ' + modeLabel + ' 导出已取消。');
+            } else {
+              var pdfErrMsg = pdfErr && pdfErr.message ? pdfErr.message : String(pdfErr);
+              pdfCard.error(pdfErrMsg, function () {
+                svdUnregister(pdfReqId);
+                exportCoursewarePpt(type);
+              });
+              setResourceStatus(statusEl, '❌ ' + modeLabel + ' 导出失败: ' + pdfErrMsg, true);
+            }
+          }
         } else if (type === 'pptx') {
           if (!window.PptxGenJS) {
             setResourceStatus(statusEl, '正在加载 PPTX 合成引擎...');
@@ -6140,9 +6435,7 @@ export function buildWqxtUpgradeRuntimeScript(): string {
       } catch (err) {
         setResourceStatus(statusEl, '❌ 课件导出失败: ' + (err && err.message ? err.message : String(err)), true);
       } finally {
-        if (btnPptx) btnPptx.disabled = false;
-        if (btnPdf) btnPdf.disabled = false;
-        if (btnHtml) btnHtml.disabled = false;
+        setPptButtonsDisabled(false);
       }
     }
 
@@ -6405,9 +6698,156 @@ export function buildWqxtUpgradeRuntimeScript(): string {
     var catModalLastSig = '';
     var catAutoScrolledLesson = '';
     var catModalSearchQuery = '';
+    var catVmCache = null;
+    var catApiCache = {
+      courseId: '',
+      loading: false,
+      list: null,
+      fetchedAt: 0
+    };
+
+    function findCatalogueVm() {
+      if (catVmCache && catVmCache.$el && document.body.contains(catVmCache.$el) && Array.isArray(catVmCache.catalogueList)) {
+        return catVmCache;
+      }
+      var wrapper = document.querySelector('.course-catalogue-wrapper');
+      if (wrapper && wrapper.__vue__ && Array.isArray(wrapper.__vue__.catalogueList)) {
+        catVmCache = wrapper.__vue__;
+        return catVmCache;
+      }
+      var roomVm = findVideoRoomVm();
+      if (roomVm && Array.isArray(roomVm.$children)) {
+        var queue = roomVm.$children.slice();
+        var depth = 0;
+        while (queue.length > 0 && depth < 40) {
+          depth++;
+          var child = queue.shift();
+          if (!child) continue;
+          if (Array.isArray(child.catalogueList)) {
+            catVmCache = child;
+            return catVmCache;
+          }
+          if (Array.isArray(child.$children)) {
+            for (var c = 0; c < child.$children.length; c++) {
+              queue.push(child.$children[c]);
+            }
+          }
+        }
+      }
+      var candidates = document.querySelectorAll('.relative-info-left *, .living-page-content *');
+      for (var i = 0; i < candidates.length; i++) {
+        var vm = candidates[i].__vue__;
+        if (vm && Array.isArray(vm.catalogueList)) {
+          catVmCache = vm;
+          return catVmCache;
+        }
+      }
+      return null;
+    }
+
+    function resolveCatalogueStatusMeta(statusVal) {
+      var s = String(statusVal != null ? statusVal : '').trim();
+      if (s === '1') return { status: s, statusText: '直播中', statusKind: 'live' };
+      if (s === '2') return { status: s, statusText: '未开始', statusKind: 'upcoming' };
+      if (s === '3') return { status: s, statusText: '回放生成中', statusKind: 'generating' };
+      if (s === '5') return { status: s, statusText: '暂无回放', statusKind: 'none' };
+      return { status: s, statusText: '', statusKind: '' };
+    }
+
+    function ensureCatalogueApiFallback(courseId, roomVm) {
+      if (!courseId) return;
+      var cid = String(courseId).trim();
+      if (!cid) return;
+      if (catApiCache.courseId === cid && (catApiCache.loading || (Array.isArray(catApiCache.list) && catApiCache.list.length > 0))) {
+        return;
+      }
+      catApiCache.courseId = cid;
+      catApiCache.loading = true;
+      catApiCache.list = null;
+
+      var isInspection = !!(roomVm && roomVm.liveInfo && roomVm.liveInfo.course_type === 'inspection');
+      var apiUrl = isInspection
+        ? ('/courseapi/v3/portal-home-setting/get-course-info?course_id=' + encodeURIComponent(cid) + '&type=inspection')
+        : ('/courseapi/v2/course/catalogue?course_id=' + encodeURIComponent(cid));
+
+      fetch(apiUrl, { credentials: 'include' })
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+          if (catApiCache.courseId !== cid) return;
+          var list = null;
+          if (res && res.result && Array.isArray(res.result.data)) {
+            list = res.result.data;
+          } else if (res && res.data && Array.isArray(res.data.sub_list)) {
+            list = res.data.sub_list;
+          } else if (res && res.data && Array.isArray(res.data)) {
+            list = res.data;
+          }
+          if (Array.isArray(list) && list.length > 0) {
+            catApiCache.list = list;
+            catApiCache.fetchedAt = Date.now();
+            var panel = document.getElementById(CATALOGUE_PANEL_ID);
+            if (panel) syncCatalogueData(panel);
+          }
+        })
+        .catch(function () {})
+        .finally(function () {
+          if (catApiCache.courseId === cid) {
+            catApiCache.loading = false;
+          }
+        });
+    }
+
+    function handleCatalogueItemClick(item) {
+      if (!item) return;
+      // 1. 优先调用原组件 openVideo(raw)，100% 保持原网页的新标签跳转与未开始/暂无回放原生提示
+      if (item.catVm && typeof item.catVm.openVideo === 'function' && item.raw) {
+        try {
+          item.catVm.openVideo(item.raw);
+          return;
+        } catch (err) {}
+      }
+      // 2. 若有关联的原生 DOM 节点，触发其点击
+      if (item.el && typeof item.el.click === 'function') {
+        try {
+          item.el.click();
+          return;
+        } catch (err) {}
+      }
+      // 3. 兜底：当数据来自接口缓存且原组件未挂载时，模拟原站状态提示与新标签页打开
+      var roomVm = findVideoRoomVm();
+      if (item.status === '2' || item.status === '3' || item.status === '5') {
+        var msg = item.statusText || '当前课节暂不可播放';
+        if (roomVm && typeof roomVm.$message === 'function') {
+          try { roomVm.$message({ type: 'warning', message: msg }); return; } catch (e) {}
+        }
+        return;
+      }
+      if (item.subId) {
+        var ctx = VideoAuthManager.getContext();
+        var courseId = (item.raw && item.raw.course_id) || ctx.courseId;
+        if (courseId) {
+          var q = new URLSearchParams(location.search.indexOf('?') >= 0 ? location.search : (location.hash.split('?')[1] || ''));
+          var tenant = q.get('tenant_code') || '212';
+          var targetUrl = location.origin + location.pathname + '?course_id=' + encodeURIComponent(courseId) + '&sub_id=' + encodeURIComponent(item.subId) + '&tenant_code=' + encodeURIComponent(tenant) + '#/livingroom?course_id=' + encodeURIComponent(courseId) + '&sub_id=' + encodeURIComponent(item.subId) + '&tenant_code=' + encodeURIComponent(tenant);
+          window.open(targetUrl, '_blank');
+        }
+      }
+    }
 
     function getCatalogueItems() {
-      // 优先从全局捕获所有 .catalogue-item
+      var ctx = VideoAuthManager.getContext();
+      var currentCourseId = ctx.courseId || '';
+      var currentSubId = ctx.subId || '';
+      var roomVm = ctx.roomVm || findVideoRoomVm();
+
+      var headerTime = '';
+      var host = document.querySelector('div.header-info');
+      if (host) {
+        var timeNode = host.querySelector('.time_span');
+        if (timeNode) headerTime = (timeNode.textContent || '').trim().replace(/\\s+/g, '');
+      }
+
+      // 捕获当前页已渲染的 .catalogue-item（原网页分页每次仅挂载 6 个，仅供缩略图或回退兜底）
       var nativeItems = document.querySelectorAll('.catalogue-item');
       if (!nativeItems || nativeItems.length === 0) {
         var wrapper = document.querySelector('.item-wrapper, .course-catalogue-wrapper, div[class*="catalogue"]');
@@ -6416,47 +6856,90 @@ export function buildWqxtUpgradeRuntimeScript(): string {
         }
       }
       if (!nativeItems || nativeItems.length === 0) {
-        // 尝试从隐藏保险仓（若存在）中查找
         var vault = document.getElementById('__profer-vault');
         if (vault) {
           nativeItems = vault.querySelectorAll('.catalogue-item');
         }
       }
 
-      var items = [];
-      var headerTime = '';
-      var host = document.querySelector('div.header-info');
-      if (host) {
-        var timeNode = host.querySelector('.time_span');
-        if (timeNode) headerTime = (timeNode.textContent || '').trim().replace(/\s+/g, '');
+      // 核心修复：直接读取 courseCatalogue Vue 组件实例的全量 catalogueList，绕过原网页 6 条分页截断
+      var catVm = findCatalogueVm();
+      var rawList = null;
+      if (catVm && Array.isArray(catVm.catalogueList) && catVm.catalogueList.length > 0) {
+        rawList = catVm.catalogueList;
+      } else if (currentCourseId) {
+        if (catApiCache.courseId === String(currentCourseId) && Array.isArray(catApiCache.list) && catApiCache.list.length > 0) {
+          rawList = catApiCache.list;
+        } else {
+          ensureCatalogueApiFallback(currentCourseId, roomVm);
+        }
       }
 
-      for (var i = 0; i < nativeItems.length; i++) {
-        var itemEl = nativeItems[i];
-        var imgEl = itemEl.querySelector('img.thumb') || itemEl.querySelector('img');
-        var nameEl = itemEl.querySelector('.catalogue_name') || itemEl.querySelector('p');
-        var name = nameEl ? (nameEl.textContent || '').trim() : ('第 ' + (i + 1) + ' 节');
-        var thumb = imgEl ? (imgEl.getAttribute('src') || '') : '';
-        var normName = name.replace(/\s+/g, '');
+      var items = [];
+      if (rawList && rawList.length > 0) {
+        for (var r = 0; r < rawList.length; r++) {
+          var raw = rawList[r] || {};
+          var rawName = String(raw.title || raw.sub_title || raw.name || ('第 ' + (r + 1) + ' 节')).trim();
+          var rawThumb = String(raw.pic || raw.thumb || raw.combinePic || raw.cover || '').trim();
+          var itemSubId = String(raw.sub_id || raw.id || '').trim();
+          var normRawName = rawName.replace(/\\s+/g, '');
+          var statusMeta = resolveCatalogueStatusMeta(raw.status);
 
-        var cls = ' ' + (itemEl.className || '') + ' ';
-        var hasActiveCls = /(?:^|\s)(?:active|is-active|selected|current)(?:\s|$)/.test(cls);
-        var matchesHeader = !!(headerTime && normName && (headerTime.indexOf(normName) !== -1 || normName.indexOf(headerTime) !== -1));
-        var isActive = hasActiveCls || matchesHeader;
+          var isItemActive = false;
+          if (currentSubId && itemSubId && String(currentSubId) === itemSubId) {
+            isItemActive = true;
+          } else if (!currentSubId && headerTime && normRawName && (headerTime.indexOf(normRawName) !== -1 || normRawName.indexOf(headerTime) !== -1)) {
+            isItemActive = true;
+          }
 
-        items.push({
-          index: i,
-          name: name,
-          thumb: thumb,
-          isActive: isActive,
-          el: itemEl
-        });
+          items.push({
+            index: r,
+            name: rawName,
+            thumb: rawThumb,
+            isActive: isItemActive,
+            status: statusMeta.status,
+            statusText: statusMeta.statusText,
+            statusKind: statusMeta.statusKind,
+            subId: itemSubId,
+            raw: raw,
+            catVm: catVm,
+            el: null
+          });
+        }
+      } else {
+        for (var i = 0; i < nativeItems.length; i++) {
+          var itemEl = nativeItems[i];
+          var imgEl = itemEl.querySelector('img.thumb') || itemEl.querySelector('img');
+          var nameEl = itemEl.querySelector('.catalogue_name') || itemEl.querySelector('p');
+          var name = nameEl ? (nameEl.textContent || '').trim() : ('第 ' + (i + 1) + ' 节');
+          var thumb = imgEl ? (imgEl.getAttribute('src') || '') : '';
+          var normName = name.replace(/\\s+/g, '');
+
+          var cls = ' ' + (itemEl.className || '') + ' ';
+          var hasActiveCls = /(?:^|\\s)(?:active|is-active|selected|current)(?:\\s|$)/.test(cls);
+          var matchesHeader = !!(headerTime && normName && (headerTime.indexOf(normName) !== -1 || normName.indexOf(headerTime) !== -1));
+          var isActive = hasActiveCls || matchesHeader;
+
+          items.push({
+            index: i,
+            name: name,
+            thumb: thumb,
+            isActive: isActive,
+            status: '',
+            statusText: '',
+            statusKind: '',
+            subId: '',
+            raw: null,
+            catVm: catVm,
+            el: itemEl
+          });
+        }
       }
 
       var hasActive = items.some(function (it) { return it.isActive; });
       if (!hasActive && items.length > 0 && headerTime) {
         for (var j = 0; j < items.length; j++) {
-          var m = items[j].name.match(/\d+/g);
+          var m = items[j].name.match(/\\d+/g);
           if (m && m.length) {
             var allIn = m.every(function (num) { return headerTime.indexOf(num) !== -1; });
             if (allIn) { items[j].isActive = true; break; }
@@ -6526,7 +7009,9 @@ export function buildWqxtUpgradeRuntimeScript(): string {
       }
 
       var activeKey = activeItem ? (activeItem.index + ':' + activeItem.name) : '-1';
-      var sig = items.length + '|' + items.map(function (it) { return it.name + ':' + it.thumb + ':' + (it.isActive ? 1 : 0); }).join(';');
+      var sig = items.length + '|' + items.map(function (it) {
+        return it.name + ':' + it.thumb + ':' + (it.isActive ? 1 : 0) + ':' + (it.statusKind || '');
+      }).join(';');
 
       var track = panel.querySelector('#__profer-cat-scroll-track');
       if (track && sig !== catLastSig) {
@@ -6555,7 +7040,9 @@ export function buildWqxtUpgradeRuntimeScript(): string {
       for (var i = 0; i < items.length; i++) {
         var it = items[i];
         var activeCls = it.isActive ? ' is-active' : '';
-        html += '<div class="profer-cat-card' + activeCls + '" data-index="' + it.index + '" title="' + escapeHtml(it.name) + '">';
+        var mutedCls = (!it.isActive && (it.statusKind === 'upcoming' || it.statusKind === 'generating' || it.statusKind === 'none')) ? ' is-muted' : '';
+        var cardTitle = it.name + (it.statusText ? (' (' + it.statusText + ')') : '');
+        html += '<div class="profer-cat-card' + activeCls + mutedCls + '" data-index="' + it.index + '" title="' + escapeHtml(cardTitle) + '">';
         html += '  <div class="profer-cat-thumb-wrap">';
         if (it.thumb) {
           html += '    <img class="profer-cat-thumb" src="' + escapeHtml(it.thumb) + '" alt="' + escapeHtml(it.name) + '" loading="lazy" />';
@@ -6565,6 +7052,8 @@ export function buildWqxtUpgradeRuntimeScript(): string {
         html += '    </div>';
         if (it.isActive) {
           html += '    <span class="profer-cat-badge-playing">正在播放</span>';
+        } else if (it.statusText && it.statusKind) {
+          html += '    <span class="profer-cat-badge-status profer-cat-badge-' + escapeHtml(it.statusKind) + '">' + escapeHtml(it.statusText) + '</span>';
         }
         html += '  </div>';
         html += '  <p class="profer-cat-name">' + escapeHtml(it.name) + '</p>';
@@ -6623,8 +7112,8 @@ export function buildWqxtUpgradeRuntimeScript(): string {
           var idx = parseInt(card.getAttribute('data-index'), 10);
           if (!isNaN(idx)) {
             var data = getCatalogueItems();
-            if (data.items[idx] && data.items[idx].el) {
-              try { data.items[idx].el.click(); } catch (err) {}
+            if (data.items[idx]) {
+              handleCatalogueItemClick(data.items[idx]);
             }
           }
         });
@@ -6728,8 +7217,8 @@ export function buildWqxtUpgradeRuntimeScript(): string {
           var idx = parseInt(card.getAttribute('data-index'), 10);
           if (!isNaN(idx)) {
             var data = getCatalogueItems();
-            if (data.items[idx] && data.items[idx].el) {
-              try { data.items[idx].el.click(); } catch (err) {}
+            if (data.items[idx]) {
+              handleCatalogueItemClick(data.items[idx]);
             }
             closeCatalogueModal();
           }
@@ -6777,7 +7266,7 @@ export function buildWqxtUpgradeRuntimeScript(): string {
       // 页面级 MutationObserver 会在任何 childList 变动后重新触发 sync()，
       // 若无条件重写网格会形成「重写 → 观察 → 重写」的微任务死循环，导致整页冻结。
       var sig = query + '|' + filtered.map(function (it) {
-        return it.index + ':' + it.name + ':' + it.thumb + ':' + (it.isActive ? 1 : 0);
+        return it.index + ':' + it.name + ':' + it.thumb + ':' + (it.isActive ? 1 : 0) + ':' + (it.statusKind || '');
       }).join(';');
       if (sig === catModalLastSig) return;
       catModalLastSig = sig;
@@ -6793,7 +7282,9 @@ export function buildWqxtUpgradeRuntimeScript(): string {
       for (var i = 0; i < filtered.length; i++) {
         var it = filtered[i];
         var activeCls = it.isActive ? ' is-active' : '';
-        html += '<div class="profer-cat-modal-card' + activeCls + '" data-index="' + it.index + '" title="' + escapeHtml(it.name) + '">';
+        var mutedCls = (!it.isActive && (it.statusKind === 'upcoming' || it.statusKind === 'generating' || it.statusKind === 'none')) ? ' is-muted' : '';
+        var cardTitle = it.name + (it.statusText ? (' (' + it.statusText + ')') : '');
+        html += '<div class="profer-cat-modal-card' + activeCls + mutedCls + '" data-index="' + it.index + '" title="' + escapeHtml(cardTitle) + '">';
         html += '  <div class="profer-cat-thumb-wrap">';
         if (it.thumb) {
           html += '    <img class="profer-cat-thumb" src="' + escapeHtml(it.thumb) + '" alt="' + escapeHtml(it.name) + '" loading="lazy" />';
@@ -6803,6 +7294,8 @@ export function buildWqxtUpgradeRuntimeScript(): string {
         html += '    </div>';
         if (it.isActive) {
           html += '    <span class="profer-cat-badge-playing">正在播放</span>';
+        } else if (it.statusText && it.statusKind) {
+          html += '    <span class="profer-cat-badge-status profer-cat-badge-' + escapeHtml(it.statusKind) + '">' + escapeHtml(it.statusText) + '</span>';
         }
         html += '  </div>';
         html += '  <p class="profer-cat-name">' + escapeHtml(it.name) + '</p>';
@@ -6828,6 +7321,7 @@ export function buildWqxtUpgradeRuntimeScript(): string {
       catModalLastSig = '';
       catAutoScrolledLesson = '';
       catModalSearchQuery = '';
+      catVmCache = null;
     }
 
     function upgradeResourcePanel() {
@@ -6854,8 +7348,10 @@ export function buildWqxtUpgradeRuntimeScript(): string {
 
       var btnPptPptx = node.querySelector('#__profer-btn-ppt-pptx');
       if (btnPptPptx) btnPptPptx.addEventListener('click', function () { exportCoursewarePpt('pptx'); });
-      var btnPptPdf = node.querySelector('#__profer-btn-ppt-pdf');
-      if (btnPptPdf) btnPptPdf.addEventListener('click', function () { exportCoursewarePpt('pdf'); });
+      var btnPptPdfSlides = node.querySelector('#__profer-btn-ppt-pdf-slides');
+      if (btnPptPdfSlides) btnPptPdfSlides.addEventListener('click', function () { exportCoursewarePpt('pdf-slides'); });
+      var btnPptPdfHandout = node.querySelector('#__profer-btn-ppt-pdf-handout');
+      if (btnPptPdfHandout) btnPptPdfHandout.addEventListener('click', function () { exportCoursewarePpt('pdf-handout'); });
       var btnPptHtml = node.querySelector('#__profer-btn-ppt-html');
       if (btnPptHtml) btnPptHtml.addEventListener('click', function () { exportCoursewarePpt('html'); });
 

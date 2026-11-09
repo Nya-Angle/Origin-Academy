@@ -85,6 +85,75 @@ function applyWqxtDownloadBridge(): void {
         if (!clientId) return
         if (action !== 'cancel' && action !== 'open' && action !== 'reveal' && action !== 'blob') return
         ipcRenderer.send('yanhu-download-action', { action, clientId, filename })
+        return
+      }
+      if (event.data.type === '__profer_wqxt_pdf_export_init') {
+        const requestId = typeof event.data.requestId === 'string' ? event.data.requestId : ''
+        const filename = typeof event.data.filename === 'string' ? event.data.filename : ''
+        const mode = event.data.mode === 'slides' ? 'slides' : 'handout'
+        if (!requestId) return
+        void ipcRenderer
+          .invoke('yanhu-export-pdf-init', { requestId, filename, mode })
+          .then((res) => {
+            window.postMessage(
+              {
+                type: '__profer_wqxt_pdf_export_response',
+                phase: 'init',
+                requestId,
+                payload: res && typeof res === 'object' ? res : { ok: false },
+              },
+              '*',
+            )
+          })
+          .catch((err) => {
+            window.postMessage(
+              {
+                type: '__profer_wqxt_pdf_export_response',
+                phase: 'init',
+                requestId,
+                payload: { ok: false, error: err && err.message ? String(err.message) : String(err) },
+              },
+              '*',
+            )
+          })
+        return
+      }
+      if (event.data.type === '__profer_wqxt_pdf_export_render') {
+        const requestId = typeof event.data.requestId === 'string' ? event.data.requestId : ''
+        const html = typeof event.data.html === 'string' ? event.data.html : ''
+        const mode = event.data.mode === 'slides' ? 'slides' : 'handout'
+        const filename = typeof event.data.filename === 'string' ? event.data.filename : ''
+        if (!requestId || !html) return
+        void ipcRenderer
+          .invoke('yanhu-export-pdf-render', { requestId, html, mode, filename })
+          .then((res) => {
+            window.postMessage(
+              {
+                type: '__profer_wqxt_pdf_export_response',
+                phase: 'render',
+                requestId,
+                payload: res && typeof res === 'object' ? res : { ok: false },
+              },
+              '*',
+            )
+          })
+          .catch((err) => {
+            window.postMessage(
+              {
+                type: '__profer_wqxt_pdf_export_response',
+                phase: 'render',
+                requestId,
+                payload: { ok: false, error: err && err.message ? String(err.message) : String(err) },
+              },
+              '*',
+            )
+          })
+        return
+      }
+      if (event.data.type === '__profer_wqxt_pdf_export_cancel') {
+        const requestId = typeof event.data.requestId === 'string' ? event.data.requestId : ''
+        if (!requestId) return
+        ipcRenderer.send('yanhu-export-pdf-cancel', { requestId })
       }
     })
 
