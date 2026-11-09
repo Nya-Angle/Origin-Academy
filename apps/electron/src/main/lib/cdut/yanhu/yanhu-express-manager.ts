@@ -15,9 +15,10 @@
  * 不主动嗅探或解密内网 Cookie。
  */
 
-import { existsSync } from 'node:fs'
-import { join } from 'node:path'
-import { BrowserWindow, Menu, View, WebContentsView, clipboard, ipcMain, session as electronSession, shell, type DownloadItem, type Session, type WebContents } from 'electron'
+import { existsSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { basename, join } from 'node:path'
+import { BrowserWindow, Menu, View, WebContentsView, clipboard, dialog, ipcMain, session as electronSession, shell, type DownloadItem, type Session, type WebContents } from 'electron'
 import {
   buildYanhuBlockedUrl,
   isYanhuBlockedUrl,
@@ -337,6 +338,12 @@ export class YanhuExpressManager {
   /** 已完成的保存路径（供「立即播放 / 在文件夹中显示」）：clientId -> { path, at } */
   private readonly recentDownloadPaths = new Map<string, { path: string; at: number }>()
 
+  /** 待导出的 PDF 任务登记：requestId -> { savePath, mode, filename, at, cancelled } */
+  private readonly pendingPdfExports = new Map<
+    string,
+    { savePath: string; mode: 'slides' | 'handout'; filename: string; at: number; cancelled?: boolean }
+  >()
+
   constructor() {
     ipcMain.on('yanhu-download-video', (event, payload?: { url?: string; filename?: string; clientId?: string }) => {
       if (!payload?.url) return
@@ -347,7 +354,25 @@ export class YanhuExpressManager {
       this.handleDownloadAction(payload)
     })
     // AI 问渠助手：消息 / 中断 / 配置 / 历史（集中注册，幂等）
+    // AI 问渠助手：消息 / 中断 / 配置 / 历史（集中注册，幂等）
     wqxtAiHarness.attach()
+    ipcMain.handle(
+      'yanhu-export-pdf-init',
+      (_event, payload?: { requestId?: string; filename?: string; mode?: 'slides' | 'handout' }) =>
+        this.handleExportPdfInit(payload),
+    )
+    ipcMain.handle(
+      'yanhu-export-pdf-render',
+      (_event, payload?: { requestId?: string; html?: string; mode?: 'slides' | 'handout'; filename?: string }) =>
+        this.handleExportPdfRender(payload),
+    )
+    ipcMain.on('yanhu-export-pdf-cancel', (_event, payload?: { requestId?: string }) => {
+      if (payload?.requestId) {
+        const rec = this.pendingPdfExports.get(payload.requestId)
+        if (rec) rec.cancelled = true
+        this.pendingPdfExports.delete(payload.requestId)
+      }
+    })
   }
 
   /** 主进程 -> 渲染进程广播 */
@@ -1324,6 +1349,190 @@ export class YanhuExpressManager {
       }
     } catch (err) {
       console.warn('[AI 问渠学堂] 下载动作处理失败:', err)
+    }
+  }
+
+  /**
+   * 问渠学堂课件 PDF 导出阶段 1：弹出原生「另存为」对话框并仅在内存登记目标路径。
+   *
+   * 关键设计：绝不在选定路径时提前写入文件，从源头杜绝 Microsoft Print to PDF 的 0 KB 锁死占位问题。
+   */
+  private async handleExportPdfInit(payload?: {
+    requestId?: string
+    filename?: string
+    mode?: 'slides' | 'handout'
+  }): Promise<{ ok: boolean; canceled?: boolean; filename?: string; error?: string }> {
+    try {
+      const now = Date.now()
+      for (const [k, v] of this.pendingPdfExports) {
+        if (now - v.at > 30 * 60 * 1000) this.pendingPdfExports.delete(k)
+      }
+      const requestId = typeof payload?.requestId === 'string' ? payload.requestId.trim() : ''
+      if (!requestId) return { ok: false, error: '无效的导出请求标识' }
+      const mode: 'slides' | 'handout' = payload?.mode === 'slides' ? 'slides' : 'handout'
+      const rawName =
+        typeof payload?.filename === 'string' && payload.filename.trim()
+          ? payload.filename.trim()
+          : '课堂课件.pdf'
+      const defaultFilename = rawName.toLowerCase().endsWith('.pdf') ? rawName : `${rawName}.pdf`
+
+      const dialogOpts: Electron.SaveDialogOptions = {
+        title: mode === 'slides' ? '导出横向纯享 PDF 课件 (16:9 满铺)' : '导出纵向讲义 PDF (含时间点与文字)',
+        defaultPath: defaultFilename,
+        filters: [{ name: 'PDF 文档 (*.pdf)', extensions: ['pdf'] }],
+      }
+      const res =
+        this.owner && !this.owner.isDestroyed()
+          ? await dialog.showSaveDialog(this.owner, dialogOpts)
+          : await dialog.showSaveDialog(dialogOpts)
+
+      if (res.canceled || !res.filePath) {
+        return { ok: false, canceled: true }
+      }
+      let savePath = res.filePath
+      if (!savePath.toLowerCase().endsWith('.pdf')) {
+        savePath += '.pdf'
+      }
+      const chosenName = basename(savePath)
+      this.pendingPdfExports.set(requestId, {
+        savePath,
+        mode,
+        filename: chosenName,
+        at: Date.now(),
+      })
+      return { ok: true, canceled: false, filename: chosenName }
+    } catch (err) {
+      console.warn('[AI 问渠学堂] PDF 导出对话框初始化失败:', err)
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      }
+    }
+  }
+
+  /**
+   * 问渠学堂课件 PDF 导出阶段 2：在隐藏 BrowserWindow 中通过 webContents.printToPDF 静默渲染，
+   * 生成完整内存 Buffer 后以 .tmp -> rename 原子写入磁盘，写入完毕即 100% 可读。
+   */
+  private async handleExportPdfRender(payload?: {
+    requestId?: string
+    html?: string
+    mode?: 'slides' | 'handout'
+    filename?: string
+  }): Promise<{ ok: boolean; canceled?: boolean; size?: number; filename?: string; error?: string }> {
+    const requestId = typeof payload?.requestId === 'string' ? payload.requestId.trim() : ''
+    const html = typeof payload?.html === 'string' ? payload.html : ''
+    if (!requestId || !html) return { ok: false, error: '缺少 PDF 渲染内容' }
+    const record = this.pendingPdfExports.get(requestId)
+    if (!record || record.cancelled) {
+      this.pendingPdfExports.delete(requestId)
+      return { ok: false, canceled: true, error: '导出任务已取消' }
+    }
+
+    const tempHtmlPath = join(
+      tmpdir(),
+      `profer-wqxt-pdf-${requestId.replace(/[^a-zA-Z0-9_-]/g, '')}-${Date.now()}.html`,
+    )
+    let pdfWin: BrowserWindow | null = null
+    try {
+      writeFileSync(tempHtmlPath, html, 'utf-8')
+      pdfWin = new BrowserWindow({
+        show: false,
+        width: record.mode === 'slides' ? 1280 : 960,
+        height: record.mode === 'slides' ? 720 : 1280,
+        webPreferences: {
+          sandbox: true,
+          contextIsolation: true,
+          nodeIntegration: false,
+          backgroundThrottling: false,
+        },
+      })
+      await pdfWin.loadFile(tempHtmlPath)
+      await pdfWin.webContents
+        .executeJavaScript(`
+          Promise.all(
+            Array.from(document.images || []).map((img) => {
+              if (img.complete) {
+                return typeof img.decode === 'function' ? img.decode().catch(() => {}) : Promise.resolve();
+              }
+              return new Promise((resolve) => {
+                img.addEventListener('load', () => {
+                  if (typeof img.decode === 'function') img.decode().catch(() => {}).finally(resolve);
+                  else resolve();
+                }, { once: true });
+                img.addEventListener('error', () => resolve(), { once: true });
+              });
+            })
+          ).then(() => new Promise((r) => setTimeout(r, 80)))
+        `)
+        .catch(() => undefined)
+
+      const latest = this.pendingPdfExports.get(requestId)
+      if (!latest || latest.cancelled) {
+        return { ok: false, canceled: true, error: '导出已取消' }
+      }
+
+      const pdfBuffer = await pdfWin.webContents.printToPDF(
+        record.mode === 'slides'
+          ? {
+              landscape: false,
+              // 16:9 宽屏尺寸（297mm × 167.0625mm = 11.6929in × 6.5773in），配合 CSS @page 零边距满铺
+              pageSize: { width: 11.6929, height: 6.5773 },
+              printBackground: true,
+              margins: { top: 0, bottom: 0, left: 0, right: 0 },
+              preferCSSPageSize: true,
+            }
+          : {
+              landscape: false,
+              pageSize: 'A4',
+              printBackground: true,
+              preferCSSPageSize: true,
+            },
+      )
+
+      const afterPdf = this.pendingPdfExports.get(requestId)
+      if (!afterPdf || afterPdf.cancelled) {
+        return { ok: false, canceled: true, error: '导出已取消' }
+      }
+
+      const tmpPdfPath = `${record.savePath}.profer-${Date.now()}.tmp`
+      try {
+        writeFileSync(tmpPdfPath, pdfBuffer)
+        try {
+          if (existsSync(record.savePath)) unlinkSync(record.savePath)
+        } catch {
+          // 忽略预删除异常
+        }
+        renameSync(tmpPdfPath, record.savePath)
+      } catch {
+        try {
+          if (existsSync(tmpPdfPath)) unlinkSync(tmpPdfPath)
+        } catch {}
+        writeFileSync(record.savePath, pdfBuffer)
+      }
+
+      this.recentDownloadPaths.set(requestId, { path: record.savePath, at: Date.now() })
+      return {
+        ok: true,
+        size: pdfBuffer.byteLength,
+        filename: record.filename,
+      }
+    } catch (err) {
+      console.warn('[AI 问渠学堂] 原生 PDF 导出失败:', err)
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      }
+    } finally {
+      this.pendingPdfExports.delete(requestId)
+      if (pdfWin && !pdfWin.isDestroyed()) {
+        try {
+          pdfWin.destroy()
+        } catch {}
+      }
+      try {
+        if (existsSync(tempHtmlPath)) unlinkSync(tempHtmlPath)
+      } catch {}
     }
   }
 
